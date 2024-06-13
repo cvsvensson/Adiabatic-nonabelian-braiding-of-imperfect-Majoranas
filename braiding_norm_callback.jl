@@ -3,6 +3,7 @@ using QuantumDots
 using LinearAlgebra
 using Plots
 using OrdinaryDiffEq
+using DiffEqCallbacks
 includet("misc.jl")
 ## Get the majoranas
 c = FermionBasis(1:2)
@@ -33,7 +34,10 @@ function H((T, Δmin, Δmax, k), t)
     Δs = braiding_deltas(t, T, Δmax, Δmin, k)
     sum(Δ * P for (Δ, P) in zip(Δs, Ps))
 end
-
+function norm_error(resid, u, p)
+    resid[1] = norm(u) - 1
+end
+cb = ManifoldProjection(norm_error, resid_prototype=[0.0], autonomous=Val(true), isinplace=Val(true), save=false)
 ## Parameters for 
 vacuumvec = zeros(ComplexF64, size(γ01, 1))
 vacuumvec[1] = 1
@@ -52,7 +56,7 @@ deltas = stack([braiding_deltas(t, p...) for t in ts])'
 plot(ts, deltas, label=["Δ1" "Δ2" "Δ3"], xlabel="t")
 
 ## Solve the system
-@time sol = solve(prob, Tsit5(), saveat=ts, reltol=1e-12);
+@time sol = solve(prob, Tsit5(), saveat=ts, save_everystep=false, tstops=ts, reltol=1e-6, callback=cb);
 plot(ts, 1 .- map(norm, sol), label="norm error", xlabel="t")
 
 ## lets measure the parities
