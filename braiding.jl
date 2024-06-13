@@ -52,7 +52,7 @@ deltas = stack([braiding_deltas(t, p...) for t in ts])'
 plot(ts, deltas, label=["Δ1" "Δ2" "Δ3"], xlabel="t")
 
 ## Solve the system
-@time sol = solve(prob, Tsit5(), saveat=ts, reltol=1e-12);
+@time sol = solve(prob, Tsit5(), saveat=ts, reltol=1e-12, tstops=ts);
 plot(ts, 1 .- map(norm, sol), label="norm error", xlabel="t")
 
 ## lets measure the parities

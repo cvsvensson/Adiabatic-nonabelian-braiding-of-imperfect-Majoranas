@@ -34,6 +34,14 @@ function H((T, Δmin, Δmax, k), t)
     Δs = braiding_deltas(t, T, Δmax, Δmin, k)
     sum(Δ * P for (Δ, P) in zip(Δs, Ps))
 end
+mat_update = (A, u, (T, Δmin, Δmax, k), t) -> -1im * H((T, Δmin, Δmax, k), t)
+function mat_update!(A, u, (T, Δmin, Δmax, k), t)
+    fill!(A, 0)
+    for (Δ, P) in zip(braiding_deltas(t, T, Δmax, Δmin, k), Ps)
+        A .+= -1im * Δ * P
+    end
+end
+M = MatrixOperator(H((1, 1, 1, 1), 1); (update_func!)=mat_update!)
 function norm_error(resid, u, p)
     resid[1] = norm(u) - 1
 end
@@ -50,14 +58,17 @@ k = 100 / T # Larger k means steeper steps for the couplings
 p = (T, Δmin, Δmax, k)
 tspan = (0.0, 2T)
 ##
+prob = ODEProblem(M, u0, tspan, p)
 prob = ODEProblem(drho!, u0, tspan, p)
 ts = range(0, tspan[2], 300)
 deltas = stack([braiding_deltas(t, p...) for t in ts])'
 plot(ts, deltas, label=["Δ1" "Δ2" "Δ3"], xlabel="t")
 
 ## Solve the system
+@time sol = solve(prob, Tsit5(), saveat=ts, save_everystep=false, tstops=ts, reltol=1e-6);
+plot(ts, 1 .- map(norm, sol), label="norm error", xlabel="t");
 @time sol = solve(prob, Tsit5(), saveat=ts, save_everystep=false, tstops=ts, reltol=1e-6, callback=cb);
-plot(ts, 1 .- map(norm, sol), label="norm error", xlabel="t")
+plot!(ts, 1 .- map(norm, sol), label="norm error with callback", xlabel="t")
 
 ## lets measure the parities
 measurements = Ps
