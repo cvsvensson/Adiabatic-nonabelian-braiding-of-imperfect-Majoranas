@@ -29,7 +29,7 @@ function norm_error(resid, u, p)
     resid[1] = norm(u) - 1
 end
 cb = ManifoldProjection(norm_error, resid_prototype=[0.0], autonomous=Val(true), isinplace=Val(true), save=false)
-## Parameters for 
+## Parameters
 u0 = first(eachcol(eigen(Hermitian(P[1, 4] + P[2, 5] - P[0, 3]), 1:1).vectors))
 T = 1 # Total time for single braiding
 k = 100 / T # Larger k means steeper steps for the couplings

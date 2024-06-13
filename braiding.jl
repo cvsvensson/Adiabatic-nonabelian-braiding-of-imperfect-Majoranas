@@ -17,7 +17,7 @@ function H((T, Δmin, Δmax, k), t)
     sum(Δ * P for (Δ, P) in zip(Δs, Ps))
 end
 
-## Parameters for 
+## Parameters
 u0 = first(eachcol(eigen(Hermitian(P[1, 4] + P[2, 5] - P[0, 3]), 1:1).vectors))
 T = 1000 # Total time for single braiding
 k = 100 / T # Larger k means steeper steps for the couplings
