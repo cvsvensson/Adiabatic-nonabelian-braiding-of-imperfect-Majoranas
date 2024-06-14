@@ -19,7 +19,7 @@ function H((T, Δmin, Δmax, k), t)
 end
 
 ## Parameters
-u0 = collect(first(eachcol(eigen(Hermitian(P[1, 4] + P[2, 5] - P[0, 3]), 1:1).vectors)))
+u0 = collect(first(eachcol(eigen(Hermitian(P[2, 4] + P[3, 5] - P[0, 1]), 1:1).vectors)))
 T = 1 # Total time for single braiding
 k = 50 / T # Larger k means steeper steps for the couplings
 Δmax = 1e3 / T
