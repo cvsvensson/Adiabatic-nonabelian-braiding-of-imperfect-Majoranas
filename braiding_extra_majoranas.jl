@@ -16,45 +16,24 @@ P = Dict(map((kp) -> kp[1] => kp[2][2^2+1:end, 2^2+1:end], collect(P))); #Only t
 Ps = (P[0, 1], P[0, 2], P[0, 3]);
 ## 
 function H((T, Δmin, Δmax, k, ϵs, ζs, corr, P), t)
+    Ham = zero(first(P)[2])
+    H!(Ham, (T, Δmin, Δmax, k, ϵs, ζs, corr, P), t)
+end
+function H!(Ham, (T, Δmin, Δmax, k, ϵs, ζs, corr, P), t)
     Δs = braiding_deltas(t, T, Δmin, Δmax, k)
-    Ham = 0 * first(P)[2]
-    # Ham = sum(real(Δ) * P for (Δ, P) in zip(Δs, Ps))
-    Ps = (P[0, 1], P[0, 2], P[0, 3]);
-    for (Δ, P) in zip(braiding_deltas(t, T, Δmin, Δmax, k), Ps)
-        Ham .+= Δ .* P
-    end
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ31 = √(Δs[3]^2 + Δs[1]^2)
     Δ12 = √(Δs[1]^2 + Δs[2]^2)
-    @. begin
-        Ham += ϵs[1] * P[0, 1] + ϵs[2] * P[2, 4] + ϵs[3] * P[3, 5]
-        Ham += imag(Δs[2]) * (ζs[1] * P[1, 2] + ζs[2] * P[0, 4]) + imag(Δs[3]) * (ζs[1] * P[1, 3] + ζs[3] * P[0, 5]) # First order in zeta
-        Ham += -real(Δs[2]) * ζs[1] * ζs[2] * P[1, 4] - real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5] # Second order in zeta
-        # Introduce a correction term against perurbations from zeta 1, 3 and zeta 1, 2
-        Ham += -corr * ζs[1] * ζs[3] * Δ23 * Δs[3] / Δ31 * P[2, 4]
-        Ham += -corr * ζs[1] * ζs[2] * Δ23 * Δs[2] / Δ12 * P[3, 5]
-    end
+    @. Ham += Δs[1] * P[0, 1] + Δs[2] * P[0, 2] + Δs[3] * P[0, 3] +
+              ϵs[1] * P[0, 1] + (ϵs[2] - corr * ζs[1] * ζs[3] * Δ23 * Δs[3] / Δ31) * P[2, 4] + (ϵs[3] - corr * ζs[1] * ζs[2] * Δ23 * Δs[2] / Δ12) * P[3, 5] +
+              imag(Δs[2]) * (ζs[1] * P[1, 2] + ζs[2] * P[0, 4]) + imag(Δs[3]) * (ζs[1] * P[1, 3] + ζs[3] * P[0, 5]) +
+              -real(Δs[2]) * ζs[1] * ζs[2] * P[1, 4] - real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5]
     return Ham
 end
-function mat_update!(iHam, u, (T, Δmin, Δmax, k, ϵs, ζs, corr, P), t)
+function mat_update!(iHam, u, p, t)
     fill!(iHam, 0)
-    Δs = braiding_deltas(t, T, Δmin, Δmax, k)
-    Ps = (P[0, 1], P[0, 2], P[0, 3])
-    for (Δ, P) in zip(braiding_deltas(t, T, Δmin, Δmax, k), Ps)
-        iHam .+= Δ .* P
-    end
-    # Introduce a correction term against perurbations from zeta 1, 3 and zeta 1, 2
-    Δ23 = √(Δs[2]^2 + Δs[3]^2)
-    Δ31 = √(Δs[3]^2 + Δs[1]^2)
-    Δ12 = √(Δs[1]^2 + Δs[2]^2)
-    @. begin
-        iHam += ϵs[1] * P[0, 1] + ϵs[2] * P[2, 4] + ϵs[3] * P[3, 5]
-        iHam += imag(Δs[2]) * (ζs[1] * P[1, 2] + ζs[2] * P[0, 4]) + imag(Δs[3]) * (ζs[1] * P[1, 3] + ζs[3] * P[0, 5]) # First order in zeta
-        iHam += -real(Δs[2]) * ζs[1] * ζs[2] * P[1, 4] - real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5] # Second order in zeta
-        iHam += -corr * ζs[1] * ζs[3] * Δ23 * Δs[3] / Δ31 * P[2, 4]
-        iHam += -corr * ζs[1] * ζs[2] * Δ23 * Δs[2] / Δ12 * P[3, 5]
-    end
-    iHam .*= -1im
+    H!(iHam, p, t)
+    lmul!(1im, iHam)
 end
 M = MatrixOperator(rand(ComplexF64, size(first(P)[2])...); (update_func!)=mat_update!)
 
