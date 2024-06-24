@@ -19,6 +19,7 @@ function H((T, Δmin, Δmax, k, ϵs, ζs, corr, P), t)
     Δs = braiding_deltas(t, T, Δmin, Δmax, k)
     Ham = 0 * first(P)[2]
     # Ham = sum(real(Δ) * P for (Δ, P) in zip(Δs, Ps))
+    Ps = (P[0, 1], P[0, 2], P[0, 3]);
     for (Δ, P) in zip(braiding_deltas(t, T, Δmin, Δmax, k), Ps)
         Ham .+= Δ .* P
     end
