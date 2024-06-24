@@ -20,8 +20,12 @@ end
 
 smooth_step(x, k) = 1 / 2 + tanh(k * x) / 2
 
-function drho!(du, u, p, t)
+function drho(u, p, t)
     ham = H(p, t)
+    return 1im * ham * u
+end
+function drho!(du, u, (p, Hcache), t)
+    ham = H!(Hcache, p, t)
     mul!(du, ham, u, 1im, 0)
     return du
 end
@@ -32,8 +36,8 @@ end
 
 ## Give the value of the three deltas at time t in the three point majorana braiding protocol
 function braiding_deltas(t, T, Δmin, Δmax, k, args...)
-    Δ1 = Δtrajectory(t, T, Δmin, Δmax/3, k)
-    Δ2 = Δtrajectory(t - T / 3, T, Δmin, Δmax/2, k)
+    Δ1 = Δtrajectory(t, T, Δmin, Δmax / 3, k)
+    Δ2 = Δtrajectory(t - T / 3, T, Δmin, Δmax / 2, k)
     Δ3 = Δtrajectory(t - 2T / 3, T, Δmin, Δmax, k)
     return Δ1, Δ2, Δ3
 end
