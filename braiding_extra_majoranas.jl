@@ -99,8 +99,8 @@ correction = 1
 
 @showprogress for (idx, ζ) in enumerate(zetas)
     p = (T, Δmin, Δmax, k, ϵs, (ζ, ζ, ζ), correction, P)
-    prob = ODEProblem(drho!, u0, tspan, p)
-    sol = solve(prob, Tsit5(), saveat=ts, reltol=1e-12, tstops=ts)
+    prob = ODEProblem(M, u0, tspan, p)
+    sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
     parities_arr[idx, :] = [real(sol(2T)'m * sol(2T)) for m in measurements]
     println("ζ = $ζ, parities = $(parities_arr[idx, :])")
 end
@@ -124,7 +124,7 @@ correction = 1
 
 using Base.Threads
 
-@showprogress for (idx_T, T) in enumerate(T_arr)
+@time @showprogress for (idx_T, T) in enumerate(T_arr)
     # Please write the above loop over zetas as parallelized loop below this Line
     Threads.@threads for idx_z in 1:gridpoints
         tspan = (0.0, 2T)
@@ -132,7 +132,7 @@ using Base.Threads
         ts = range(0, tspan[2], 1000)
         p = (T, Δmin, Δmax, k, ϵs, (ζ, ζ, ζ), correction, P)
         prob = ODEProblem(drho!, u0, tspan, p)
-        sol = solve(prob, Tsit5(), saveat=ts, reltol=1e-12, tstops=ts)
+        sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
         parities_after_T_2D[idx_z, idx_T, :] = [real(sol(T)'m * sol(T)) for m in measurements]
         parities_arr_2D[idx_z, idx_T, :] = [real(sol(2T)'m * sol(2T)) for m in measurements]
         println("T = $T, ζ = $ζ, parities = $(parities_arr_2D[idx_T, idx_z, :])")
