@@ -32,8 +32,8 @@ end
 
 ## Give the value of the three deltas at time t in the three point majorana braiding protocol
 function braiding_deltas(t, T, Δmin, Δmax, k, args...)
-    Δ1 = Δtrajectory(t, T, Δmin, Δmax, k)
-    Δ2 = Δtrajectory(t - T / 3, T, Δmin, Δmax, k)
+    Δ1 = Δtrajectory(t, T, Δmin, Δmax/3, k)
+    Δ2 = Δtrajectory(t - T / 3, T, Δmin, Δmax/2, k)
     Δ3 = Δtrajectory(t - 2T / 3, T, Δmin, Δmax, k)
     return Δ1, Δ2, Δ3
 end
