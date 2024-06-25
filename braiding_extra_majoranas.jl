@@ -60,8 +60,8 @@ M = MatrixOperator(rand(ComplexF64, size(first(P)[2])...); (update_func!)=mat_up
 ## Parameters
 u0 = collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors)))
 Δmax = 1
-T = 1e3 / Δmax
-k = 1e1
+T = 2e3 / Δmax
+k = 2e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
 ζ = 1e-2
@@ -113,14 +113,14 @@ plot(zetas, real(parities_arr), label=permutedims(parities), xlabel="ζ", ylabel
 Δmax = 1
 Δmin = 1e-4 * Δmax
 ϵs = Δmax * [0.0, 0.0, 0.0]
-k = 1e1
+k = 2e1
 
-gridpoints = 10
+gridpoints = 100
 T_arr = range(1e2, 3e3, length=gridpoints) * 1 / Δmax
 zetas = range(0, 1, length=gridpoints)
 parities_after_T_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements))
 parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements))
-correction = 1
+correction = 0
 
 using Base.Threads
 
@@ -129,10 +129,10 @@ using Base.Threads
     Threads.@threads for idx_z in 1:gridpoints
         tspan = (0.0, 2T)
         ζ = zetas[idx_z]
-        ts = range(0, tspan[2], 1000)
+        ts = range(0, tspan[2], 10)
         p = (T, Δmin, Δmax, k, ϵs, (ζ, ζ, ζ), correction, P)
         prob = ODEProblem(drho!, u0, tspan, p)
-        sol = solve(prob, Tsit5(), saveat=ts, reltol=1e-12, tstops=ts)
+        sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
         parities_after_T_2D[idx_z, idx_T, :] = [real(sol(T)'m * sol(T)) for m in measurements]
         parities_arr_2D[idx_z, idx_T, :] = [real(sol(2T)'m * sol(2T)) for m in measurements]
         println("T = $T, ζ = $ζ, parities = $(parities_arr_2D[idx_T, idx_z, :])")
@@ -140,5 +140,13 @@ using Base.Threads
 end
 ##
 # Plot the parities and parities_after_T (2, 4) as a continous colormap  
+heatmap(T_arr, zetas, real(parities_arr_2D[:, :, 2]), xlabel="T", ylabel="ζ", title="Parity (2, 4)", c=:viridis)
+##
+# Define fuction to recalculate the parities after T
+function distance_from_zero(x)
+    return abs(x)
+end
+#Plot parities after T for their distance from 0
+heatmap(T_arr, zetas, distance_from_zero.(real(parities_after_T_2D[:, :, 2]*parities_after_T_2D[:, :, 3])), xlabel="T", ylabel="ζ", title="Distance from 0 (2, 4)", c=:viridis)
 
 ##
