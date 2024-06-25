@@ -37,10 +37,8 @@ correction = 0
 tspan = (0.0, 2T)
 ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
 p = (ramp, ϵs, ζs, correction, P)
-const H = ham_with_corrections #const to avoid performance hit
-const H! = ham_with_corrections!
-M = MatrixOperator(H(p, 0, 1im); update_func=(A, u, p, t) -> H(p, t, 1im), (update_func!)=(A, u, p, t) -> H!(A, p, t, 1im))
-# end
+H = ham_with_corrections
+H! = ham_with_corrections!
 
 ##
 prob = ODEProblem{inplace}(M, u0, tspan, p)
