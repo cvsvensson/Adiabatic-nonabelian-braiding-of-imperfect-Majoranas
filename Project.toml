@@ -1,3 +1,17 @@
+name = "MajoranaBraiding"
+uuid = "f83b5287-d29b-4393-86aa-12b1ba9ce9f2"
+authors = ["Viktor Svensson <svensson.viktor.91@gmail.com> and Maximilian Nitsch"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
+
 [deps]
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
