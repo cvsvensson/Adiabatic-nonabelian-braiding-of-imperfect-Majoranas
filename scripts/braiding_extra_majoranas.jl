@@ -23,7 +23,6 @@ else
     Matrix, Vector
 end
 ## Couplings
-N = length(keys(c))
 P = parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])));
 ## Parameters
 u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors))))
@@ -36,10 +35,11 @@ k = 1e1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 correction = 0
 tspan = (0.0, 2T)
-ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
+ramp = RampProtocol([2, 1/3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
 p = (ramp, ϵs, ζs, correction, P)
 H = ham_with_corrections
 H! = ham_with_corrections!
+M = get_op(H, H!, p)
 
 ##
 prob = ODEProblem{inplace}(M, u0, tspan, p)
