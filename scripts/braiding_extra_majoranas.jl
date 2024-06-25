@@ -51,7 +51,6 @@ spectrum = stack([eigvals(H(p, t)) for t in ts])'
 plot(plot(mapslices(v -> v[2:end] .- v[1], spectrum, dims=2), ls=[:solid :dash :dot], title="Eᵢ-E₀", labels=[1, 2, 3]', yscale=:log10), delta_plot, layout=(2, 1), lw=2, frame=:box)
 ## Solve the system
 @time sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts);
-# @profview solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts);
 plot(ts, [1 .- norm(sol(t)) for t in ts], label="norm error", xlabel="t")
 
 ##
@@ -68,15 +67,16 @@ prob_full = ODEProblem{inplace}(M, U0, tspan, p)
 sol_full(2T)
 ##
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
-zetas = range(0, 1, length=100)
+zetas = range(0, 1, length=500)
 parities_arr = zeros(ComplexF64, length(zetas), length(measurements))
 correction = 1
 
-@showprogress for (idx, ζ) in enumerate(zetas)
+@time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     p = (ramp, ϵs, (ζ, ζ, ζ), correction, P)
     prob = ODEProblem{inplace}(M, u0, tspan, p)
+    ts = [0, T, 2T]
     sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
-    parities_arr[idx, :] = [real(sol(2T)'m * sol(2T)) for m in measurements]
+    parities_arr[idx, :] = [real(expval(m, sol(2T))) for m in measurements]
     #println("ζ = $ζ, parities = $(parities_arr[idx, :])")
 end
 ##
