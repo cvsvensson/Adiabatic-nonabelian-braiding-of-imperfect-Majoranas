@@ -10,6 +10,7 @@ using Base.Threads
 
 ## Get the majoranas
 c = FermionBasis(1:3, qn=QuantumDots.parity)
+N = length(keys(c))
 majorana_labels = 0:5
 γ = MajoranaWrapper(c, majorana_labels)
 use_static_arrays = true
