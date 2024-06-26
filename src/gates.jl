@@ -27,10 +27,13 @@ end
 function majorana_exchange(γ1, γ2)
     return sqrt(1im / 2) * (I + γ1 * γ2)
 end
-
-function majorana_braid(γ1, γ2)
-    return majorana_exchange(γ1, γ2)^2
+function majorana_exchange(parity_operator)
+    return sqrt(1im / 2) * (I - 1im*parity_operator)
 end
+
+
+majorana_braid(γ1, γ2) = majorana_exchange(γ1, γ2)^2
+majorana_braid(parity_operator) = majorana_exchange(parity_operator)^2
 
 function gate_overlaps(gate, gates::Dict)
     Dict(k => tr(gate * v) / 2 for (k, v) in pairs(gates))
@@ -49,6 +52,9 @@ end
     gates = single_qubit_gates(vacuum_state, one_state)
     basis = hcat(vacuum_state, one_state)
 
+    @test majorana_exchange(γ[0], γ[1]) ≈ majorana_exchange(1im*γ[0]*γ[1])
+    @test majorana_braid(γ[0], γ[1]) ≈ majorana_braid(1im*γ[0]*γ[1])
+    
     @test majorana_exchange(γ[0], γ[1])^2 ≈ majorana_braid(γ[0], γ[1])
 
     B12 = majorana_braid(γ[1], γ[2])
