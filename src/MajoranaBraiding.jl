@@ -8,7 +8,7 @@ using TestItems
 export MajoranaWrapper
 export RampProtocol
 export parity_operators
-export single_qubit_gates, gate_overlaps, majorana_exchange, majorana_braid
+export single_qubit_gates, gate_overlaps, majorana_exchange, majorana_braid, gate_fidelity
 export ham_with_corrections, ham_with_corrections!, get_op
 
 include("majoranas.jl")
