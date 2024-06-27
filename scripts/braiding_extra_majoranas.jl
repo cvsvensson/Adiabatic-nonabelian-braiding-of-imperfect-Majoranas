@@ -41,13 +41,13 @@ H! = ham_with_corrections!
 M = get_op(H, H!, p)
 
 ##
-p = (ramp, ϵs, ζs, 1, 0, P)
+p = (ramp, ϵs, ζs, int, 0, P);
 prob = ODEProblem{inplace}(M, u0, tspan, p)
 ts = range(0, tspan[2], 1000)
 deltas = stack([ramp(t) for t in ts])'
 delta_plot = plot(ts, deltas, label=["Δ01" "Δ02" "Δ03"], xlabel="t", ls=[:solid :dash :dot], lw=3)
 spectrum = stack([eigvals(H(p, t)) for t in ts])'
-plot(plot(mapslices(v -> v[2:end] .- v[1], spectrum, dims=2), ls=[:solid :dash :dot], title="Eᵢ-E₀", labels=[1, 2, 3]', yscale=:log10), delta_plot, layout=(2, 1), lw=2, frame=:box)
+plot(plot(mapslices(v -> v[2:end] .- v[1], spectrum, dims=2), ls=[:solid :dash :dot], title="Eᵢ-E₀", labels=[1, 2, 3]', yscale=:log10, ylims=(1e-16, 1e1)), delta_plot, layout=(2, 1), lw=2, frame=:box)
 ## Solve the system
 @time sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts);
 plot(ts, [1 .- norm(sol(t)) for t in ts], label="norm error", xlabel="t")
@@ -75,7 +75,10 @@ zetas = range(0, 1, length=100)
 parities_arr = zeros(ComplexF64, length(zetas), length(measurements))
 
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
-    p = (ramp, ϵs, (ζ, ζ, ζ), 1, 0, P)
+    ts = range(0, tspan[2], 1000)
+    corrmax = optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
+    # corrmax = 1
+    p = (ramp, ϵs, (ζ, ζ, ζ), corrmax, 0, P)
     prob = ODEProblem{inplace}(M, u0, tspan, p)
     ts = [0, T, 2T]
     sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
