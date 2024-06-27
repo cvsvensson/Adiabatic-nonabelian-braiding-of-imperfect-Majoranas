@@ -19,14 +19,16 @@ P = use_static_arrays ? Dict(map((kp) -> kp[1] => SMatrix{2^(N - 1),2^(N - 1)}(k
 ## 
 function H((T, Δmin, Δmax, k, ϵs, ζs, corr, P), t, α=1)
     Δs = braiding_deltas(t, T, Δmin, Δmax, k)
+    Δs = braiding_deltas_new(t, T, Δmin, Δmax, k/T, true)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ31 = √(Δs[3]^2 + Δs[1]^2)
     Δ12 = √(Δs[1]^2 + Δs[2]^2)
     Ham = similar(first(P)[2])
     Ham = α * (Δs[1] * P[0, 1] + Δs[2] * P[0, 2] + Δs[3] * P[0, 3] +
-               ϵs[1] * P[0, 1] + (ϵs[2] - corr * ζs[1] * ζs[3] * Δ23 * Δs[3] / Δ31) * P[2, 4] + (ϵs[3] - corr * ζs[1] * ζs[2] * Δ23 * Δs[2] / Δ12) * P[3, 5] +
+               ϵs[1] * P[0, 1] + (ϵs[2] - corr * ζs[1] * ζs[3] * Δ23 * abs(Δs[3])/ Δ31) * P[2, 4] + (ϵs[3] - corr * ζs[1] * ζs[2] * Δ23 * Δs[2] / Δ12) * P[3, 5] +
                imag(Δs[2]) * (ζs[1] * P[1, 2] + ζs[2] * P[0, 4]) + imag(Δs[3]) * (ζs[1] * P[1, 3] + ζs[3] * P[0, 5]) +
-               -real(Δs[2]) * ζs[1] * ζs[2] * P[1, 4] - real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5])
+               -real(Δs[2]) * ζs[1] * ζs[2] * P[1, 4] - real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5] )
+               #- corr* ζs[1] * ζs[3] * Δs[2] * P[0, 1] + corr * ζs[1] * ζs[3] * Δs[3] * Δs[1] * P[0, 2]
     return Ham
 end
 function H!(Ham, (T, Δmin, Δmax, k, ϵs, ζs, corr, P), t, α=1)
@@ -37,22 +39,23 @@ function H!(Ham, (T, Δmin, Δmax, k, ϵs, ζs, corr, P), t, α=1)
     @. Ham = α * (Δs[1] * P[0, 1] + Δs[2] * P[0, 2] + Δs[3] * P[0, 3] +
                   ϵs[1] * P[0, 1] + (ϵs[2] - corr * ζs[1] * ζs[3] * Δ23 * Δs[3] / Δ31) * P[2, 4] + (ϵs[3] - corr * ζs[1] * ζs[2] * Δ23 * Δs[2] / Δ12) * P[3, 5] +
                   imag(Δs[2]) * (ζs[1] * P[1, 2] + ζs[2] * P[0, 4]) + imag(Δs[3]) * (ζs[1] * P[1, 3] + ζs[3] * P[0, 5]) +
-                  -real(Δs[2]) * ζs[1] * ζs[2] * P[1, 4] - real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5])
+                  +real( - Δs[2]) * ζs[1] * ζs[2] * P[1, 4] + real(Δs[3]) * ζs[1] * ζs[3] * P[1, 5])
     return Ham
 end
 
 
 ## Parameters
 u0 = collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors)))
+println("u0 = $u0")
 use_static_arrays && (u0 = MVector{2^(N - 1)}(u0))
 Δmax = 1
-T = 2e3 / Δmax
-k = 2e1
+T = 3e3 / Δmax
+k = 2e2
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
-ζ = 1e-2
-ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
-correction = 0
+ζ = 0.57
+ζs = (ζ, 0*ζ, 1*ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
+correction = 1
 p = (T, Δmin, Δmax, k, ϵs, ζs, correction, P)
 tspan = (0.0, 2T)
 function mat_update(A, u, p, t)
@@ -67,6 +70,7 @@ M = use_static_arrays ? MatrixOperator(H(p, 0, 1im); update_func=mat_update) : M
 prob = ODEProblem{!use_static_arrays}(M, u0, tspan, p)
 ts = range(0, tspan[2], 1000)
 deltas = stack([braiding_deltas(t, p...) for t in ts])'
+deltas = stack([braiding_deltas_new(t, T, Δmin, Δmax, k/T, true) for t in ts])'
 plot(ts, deltas, label=["Δ01" "Δ02" "Δ03"], xlabel="t", ls=[:solid :dash :dot], lw=3)
 
 ## Solve the system
@@ -74,7 +78,8 @@ plot(ts, deltas, label=["Δ01" "Δ02" "Δ03"], xlabel="t", ls=[:solid :dash :dot
 plot(ts, [1 .- norm(sol(t)) for t in ts], label="norm error", xlabel="t")
 
 ##
-parities = [(0, 1), (2, 4), (3, 5)] # (1, 4), (2, 5)
+parities = [(1, 4), (2, 5), (3, 4)]
+parities = [(0, 1), (2, 4), (3, 5), (1, 4)]
 measurements = map(p -> P[p...], parities)
 plot(plot(ts, [real(sol(t)'m * sol(t)) for m in measurements, t in ts]', label=permutedims(parities), legend=true, xlabel="t", ylims=(-1, 1)),
     plot(ts, deltas, label=["Δ01" "Δ02" "Δ03"], xlabel="t", ls=[:solid :dash :dot], lw=1), layout=(2, 1), lw=2, frame=:box)
@@ -107,14 +112,14 @@ plot(zetas, real(parities_arr), label=permutedims(parities), xlabel="ζ", ylabel
 Δmax = 1
 Δmin = 1e-4 * Δmax
 ϵs = Δmax * [0.0, 0.0, 0.0]
-k = 2e1
+k = 5e2
 
-gridpoints = 40
+gridpoints = 50
 T_arr = range(1e2, 3e3, length=gridpoints) * 1 / Δmax
 zetas = range(0, 1, length=gridpoints)
 parities_after_T_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements))
 parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements))
-correction = 0
+correction = 1
 
 using Base.Threads
 
@@ -136,9 +141,43 @@ end
 # Plot the parities and parities_after_T (2, 4) as a continous colormap  
 heatmap(T_arr, zetas, real(parities_arr_2D[:, :, 2]), xlabel="T", ylabel="ζ", title="Parity (2, 4)", c=:viridis)
 ##
-# Define fuction to recalculate the parities after T
-function distance_from_zero(x)
-    return abs(x)
+# Change evaluation of the succesfull braiding protocol from one initial state to classifying the operator 
+# that is applied to any initial state
+# Define as initial state the identity Matrix
+U0 = Matrix{ComplexF64}(I, size(u0, 1), size(u0, 1))
+use_static_arrays && (U0 = SMatrix{2^(N - 1),2^(N - 1)}(U0))
+
+# As comparison to the perfect outcome we will use the evolution for the perfect fine tuned case
+Δmax = 1
+Δmin = 0 * Δmax
+T = 2e3 / Δmax
+k = 2e1
+
+p = (T, Δmin, Δmax, k, ϵs, ζs, correction, P)
+prob_full = ODEProblem{!use_static_arrays}(M, U0, tspan, p)
+ts = range(0, tspan[2], 1000)
+@time sol_full = solve(prob_full, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts);
+perfect_operator = sol_full(2T)
+println("Perfect operator = $perfect_operator")
+##
+# Define operator norm to classify other operators with respect to the perfect operator
+function operator_norm(A, B)
+    return norm(A - B)
 end
-#Plot parities after T for their distance from 0
-heatmap(T_arr, zetas, distance_from_zero.(real(parities_after_T_2D[:, :, 2]*parities_after_T_2D[:, :, 3])), xlabel="T", ylabel="ζ", title="Distance from 0 (2, 4)", c=:viridis)
+##
+# Do a sweep over several zetas, solve the system for the final time t=2T and measure the operator norm
+zetas = range(0, 1, length=100)
+operator_norm_arr = zeros(Float64, length(zetas))
+correction = 1
+
+@showprogress for (idx, ζ) in enumerate(zetas)
+    p = (T, Δmin, Δmax, k, ϵs, (ζ, ζ, ζ), correction, P)
+    prob = ODEProblem{!use_static_arrays}(M, u0, tspan, p)
+    sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
+    operator_norm_arr[idx] = operator_norm(sol(2T), perfect_operator)
+    #println("ζ = $ζ, operator norm = $(operator_norm_arr[idx])")
+end
+##
+# Plot the operator norm as a function of the zetas
+plot(zetas, operator_norm_arr, label="Operator norm", xlabel="ζ", ylabel="Operator norm", lw=2, frame=:box)
+##
