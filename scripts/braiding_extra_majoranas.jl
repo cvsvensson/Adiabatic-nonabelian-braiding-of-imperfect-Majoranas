@@ -41,7 +41,7 @@ H! = ham_with_corrections!
 M = get_op(H, H!, p)
 
 ##
-p = (ramp, ϵs, ζs, int, 0, P);
+p = (ramp, ϵs, ζs, 1, 0, P);
 prob = ODEProblem{inplace}(M, u0, tspan, p)
 ts = range(0, tspan[2], 1000)
 deltas = stack([ramp(t) for t in ts])'
@@ -73,12 +73,11 @@ gate_fidelity(double_braid_gate, double_braid_result)
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
 zetas = range(0, 1, length=100)
 parities_arr = zeros(ComplexF64, length(zetas), length(measurements))
-
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     ts = range(0, tspan[2], 1000)
-    corrmax = optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
+    # corrmax = MajoranaBraiding.optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
     # corrmax = 1
-    p = (ramp, ϵs, (ζ, ζ, ζ), corrmax, 0, P)
+    p = (ramp, ϵs, (ζ, ζ, ζ), 0, 0, P)
     prob = ODEProblem{inplace}(M, u0, tspan, p)
     ts = [0, T, 2T]
     sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
@@ -88,6 +87,7 @@ end
 ##
 # Plot the parities as a function of the zetas
 plot(zetas, real(parities_arr), label=permutedims(parities), xlabel="ζ", ylabel="Parity", lw=2, frame=:box)
+##
 ## Do a sweep over the total braiding time T and the zetas and plot the parities
 # Choose all energies and times in values of Deltamax
 # Define T as the x axis and zeta as the y axis
@@ -101,7 +101,6 @@ T_arr = range(1e2, 3e3, length=gridpoints) * 1 / Δmax
 zetas = range(0, 1, length=gridpoints)
 parities_after_T_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements))
 parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements))
-correction = 1
 
 @time @showprogress for (idx_T, T) in enumerate(T_arr)
     # Please write the above loop over zetas as parallelized loop below this Line
@@ -110,6 +109,7 @@ correction = 1
         ζ = zetas[idx_z]
         ts = tstops = [0, T, 2T]#range(0, tspan[2], 1000)
         ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
+
         p = (ramp, ϵs, (ζ, ζ, ζ), 1, 0, P)
         prob = ODEProblem{inplace}(M, u0, tspan, p)
         sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6, tstops=ts, saveat=ts)
@@ -156,13 +156,14 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 50
+gridpoints = 200
 zetas = range(0, 1, length=gridpoints)
 single_braid_fidelity = zeros(Float64, gridpoints)
 double_braid_fidelity = zeros(Float64, gridpoints)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
-    ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-    p = (ramp, ϵs, (ζ, ζ, ζ), 1, 0, P)
+    ramp = RampProtocol([1, 1 / 2, 1 / 4] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
+    corrmax = MajoranaBraiding.optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
+    p = (ramp, ϵs, (ζ, ζ, ζ), corrmax, 0, P)
     prob = ODEProblem{inplace}(M, U0, tspan, p)
     sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
     proj = Diagonal([0, 1, 1, 0])
@@ -172,8 +173,6 @@ double_braid_fidelity = zeros(Float64, gridpoints)
     single_braid_fidelity[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)
     double_braid_fidelity[idx] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
 end
-
-
 ##
 # Plot the parities as a function of the zetas
 plot(zetas, real(single_braid_fidelity), label="single_braid_fidelity", xlabel="ζ", lw=2, frame=:box);

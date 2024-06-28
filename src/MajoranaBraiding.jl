@@ -3,6 +3,7 @@ using LinearAlgebra
 using OrdinaryDiffEq
 using StaticArrays
 using QuantumDots
+using Optim, Interpolations
 using TestItems
 
 export MajoranaWrapper
