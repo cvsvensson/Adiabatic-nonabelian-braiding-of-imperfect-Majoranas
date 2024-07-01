@@ -156,16 +156,20 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 200
+gridpoints = 50
 zetas = range(0, 1, length=gridpoints)
+# logrange(x, y, n) = exp10.(range(log10(x), log10(y), length=n))
+# zetas = logrange(1e-4, 1, gridpoints)
 single_braid_fidelity = zeros(Float64, gridpoints)
 double_braid_fidelity = zeros(Float64, gridpoints)
+ts = range(0, tspan[2], 2000)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
-    ramp = RampProtocol([1, 1 / 2, 1 / 4] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
+    ramp = RampProtocol([1, 1 / 2, 1 / 4] .* 0, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
     corrmax = MajoranaBraiding.optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
+    # corrmax = 1
     p = (ramp, ϵs, (ζ, ζ, ζ), corrmax, 0, P)
     prob = ODEProblem{inplace}(M, U0, tspan, p)
-    sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
+    sol = solve(prob, Tsit5(), abstol=1e-9, reltol=1e-9, saveat=[0, T, 2T])
     proj = Diagonal([0, 1, 1, 0])
     single_braid_gate = majorana_exchange(P[3, 2])
     single_braid_result = sol(T)
@@ -175,5 +179,29 @@ double_braid_fidelity = zeros(Float64, gridpoints)
 end
 ##
 # Plot the parities as a function of the zetas
-plot(zetas, real(single_braid_fidelity), label="single_braid_fidelity", xlabel="ζ", lw=2, frame=:box);
-plot!(zetas, real(double_braid_fidelity), label="double_braid_fidelity", lw=2, frame=:box)
+plot(zetas, single_braid_fidelity, label="single_braid_fidelity", xlabel="ζ", lw=2, frame=:box);
+plot!(zetas, double_braid_fidelity, label="double_braid_fidelity", lw=2, frame=:box)
+
+##
+plt = plot(frame=:box)
+plot!(plt, zetas, 1 .- single_braid_fidelity, label="1 - F1", xlabel="ζ", lw=2, yscale=:log10, xscale=:log10, ylims=(1e-16, 1), markers=true, leg=:topleft);
+plot!(plt, zetas, 1 .- double_braid_fidelity, label="1 - F2", lw=2, markers=true, yscale=:log10, xscale=:log10)
+vline!(plt, [0.5], lw=1, c=:black, ls=:dashdot, label="ζ=0.5")
+
+twinplt = twinx()
+plot!(twinplt, zetas[2:end], diff(log.(1 .- double_braid_fidelity)) ./ diff(log.(zetas)), ylims=(0, 9), xscale=:log10, label="∂log(1 - F2)/∂log(ζ)", lw=2, yticks=10, markers=true, grid=false, c=3, legend=:bottomright)
+hline!(twinplt, [4, 8], lw=1, c=:black, ls=:dash, label="slope = [4, 8]")
+##
+# plot(plt, plot((zetas[2:end]), diff(log.(1 .- double_braid_fidelity)) ./ diff(log.(zetas)), ylims=(0, 9), xscale=:log10, label="∂log(1 - F)/∂log(ζ)", lw=2, yticks=10, frame=:box, markers=true))
+##
+let xscale = :identity, zetas = zetas 
+    plt = plot(frame=:box)
+    plot!(plt, zetas, 1 .- single_braid_fidelity; label="1 - F1", xlabel="ζ", lw=2, yscale=:log10, xscale, ylims=(1e-16, 1), markers=true, leg=:topleft)
+    plot!(plt, zetas, 1 .- double_braid_fidelity; label="1 - F2", lw=2, markers=true, yscale=:log10, xscale)
+    vline!(plt, [0.5], lw=1, c=:black, ls=:dashdot, label="ζ=0.5")
+
+    twinplt = twinx()
+    plot!(twinplt, zetas[2:end], diff(log.(1 .- double_braid_fidelity)) ./ diff(log.(zetas)); ylims=(0, 9), xscale, label="∂log(1 - F2)/∂log(ζ)", lw=2, yticks=10, markers=true, grid=false, c=3, legend=:bottomright)
+    hline!(twinplt, [4, 8], lw=1, c=:black, ls=:dash, label="slope = [4, 8]")
+    display(plt)
+end
