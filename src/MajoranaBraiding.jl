@@ -5,6 +5,7 @@ using StaticArrays
 using QuantumDots
 using Optim, Interpolations
 using TestItems
+using Roots
 
 export MajoranaWrapper
 export RampProtocol
