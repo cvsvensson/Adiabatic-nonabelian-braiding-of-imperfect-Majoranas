@@ -1,6 +1,7 @@
 # Braiding following Beenakker's review 1907.06497
 using MajoranaBraiding
 using QuantumDots
+using Majoranas
 using LinearAlgebra
 using Plots
 using OrdinaryDiffEq
@@ -10,22 +11,18 @@ using Base.Threads
 using TaylorSeries
 using Roots
 
-## Get the majoranas
-c = FermionBasis(1:3, qn=QuantumDots.parity)
-N = length(keys(c))
+
+nbr_of_majoranas = 6
+N = nbr_of_majoranas ÷ 2
 majorana_labels = 0:5
-γ = MajoranaWrapper(c, majorana_labels)
+γ = SingleParticleMajoranaBasis(nbr_of_majoranas, majorana_labels)
+parity = 1
 use_static_arrays = true
 inplace = !use_static_arrays
-mtype, vtype = if use_static_arrays && inplace
-    MMatrix{2^(N - 1),2^(N - 1)}, MVector{2^(N - 1)}
-elseif use_static_arrays && !inplace
-    SMatrix{2^(N - 1),2^(N - 1)}, SVector{2^(N - 1)}
-else
-    Matrix, Vector
-end
-## Couplings
-P = parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])));
+mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
+P = parity_operators(γ, parity, mtype)
+# Pold = MajoranaBraiding.parity_operators_old(nbr_of_majoranas, majorana_labels, use_static_arrays, inplace)
+
 H = ham_with_corrections
 H! = ham_with_corrections!
 ## Parameters
@@ -35,8 +32,8 @@ T = 1e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
-ζ = 9e-1
-ζs = (ζ, ζ, 2*ζ/2) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
+ζ = 1e-2
+ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
 dt = 2
