@@ -7,7 +7,7 @@ using OrdinaryDiffEq
 using ProgressMeter
 using StaticArrays
 using Base.Threads
-using TaylorSeries
+# using TaylorSeries
 using Roots
 
 ## Get the majoranas
@@ -27,7 +27,6 @@ end
 ## Couplings
 P = parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])));
 H = ham_with_corrections
-H! = ham_with_corrections!
 ## Parameters
 u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors))))
 Δmax = 1
@@ -36,19 +35,21 @@ k = 1e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
 ζ = 9e-1
-ζs = (ζ, ζ, 2*ζ/2) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
+ζs = (ζ, ζ, 2 * ζ / 2) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
 dt = 2
 ts = range(0, tspan[2], Int(tspan[2] / dt))
 ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-#corrmax = MajoranaBraiding.analytical_exact_corrmax(ζ, ramp, ts)
-corrmax = MajoranaBraiding.optimized_corrmax_independent(H, (ramp, ϵs, ζs, P), ts)
+simplecorr = optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts)
+independentsimplecorr = optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts)
+analyticsimplecorr = analytical_exact_simple_correction(ζ, ramp, ts)
+eigencorrection = EigenEnergyCorrection()
 ##
 #println("corrmax =", corrmax)
-# corrmax = 1
-p = (ramp, ϵs, ζs, corrmax, 0, P)
-M = get_op(H, H!, p)
+corr = simplecorr
+p = (ramp, ϵs, ζs, corr + eigencorrection, P)
+M = get_op(H, p)
 ## Solve the system
 prob = ODEProblem{inplace}(M, u0, tspan, p)
 @time sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts);
@@ -78,18 +79,18 @@ gate_fidelity(single_braid_gate, single_braid_result)
 gate_fidelity(double_braid_gate, double_braid_result)
 ##
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
-zetas = range(1e-6, 1-1e-2, length=20)
+zetas = range(1e-6, 1 - 1e-2, length=20)
 parities_arr = zeros(ComplexF64, length(zetas), length(measurements))
 T = 1e4
 tspan = (0.0, 2T)
 ts = range(0, tspan[2], 1000)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-    ζs = (ζ, ζ, 0*ζ/2)
-    #corrmax = MajoranaBraiding.analytical_exact_corrmax(ζ, ramp, ts)
-    corrmax = MajoranaBraiding.optimized_corrmax_independent(H, (ramp, ϵs, ζs, P), ts)
-    # corrmax = 1
-    p = (ramp, ϵs, ζs, corrmax, 0, P)
+    ζs = (ζ, ζ, 0 * ζ / 2)
+    #corr = analytical_exact_simple_correction(ζ, ramp, ts)
+    corr = optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts)
+    #corr = SimpleCorrection()
+    p = (ramp, ϵs, ζs, corr, P)
     prob = ODEProblem{inplace}(M, u0, tspan, p)
     sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
     parities_arr[idx, :] = [real(expval(m, sol(2T))) for m in measurements]
@@ -120,15 +121,14 @@ parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements)
         ζ = zetas[idx_z]
         ts = range(0, tspan[2], 1000)
         ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-        # corrmax = MajoranaBraiding.optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
-        corrmax = MajoranaBraiding.analytical_exact_corrmax(ζ, ramp, ts)
-        # corrmax = 1
-        p = (ramp, ϵs, (ζ, ζ, ζ), corrmax, 0, P)
+        #corr = optimized_simple_correction(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
+        corr = analytical_exact_simple_correction(ζ, ramp, ts)
+        # corr = SimpleCorrection()
+        p = (ramp, ϵs, (ζ, ζ, ζ), corr, P)
         prob = ODEProblem{inplace}(M, u0, tspan, p)
-        sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6, tstops=ts, saveat=ts)
+        sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6)
         parities_after_T_2D[idx_z, idx_T, :] = [real(expval(m, sol(T))) for m in measurements]
         parities_arr_2D[idx_z, idx_T, :] = [real(expval(m, sol(2T))) for m in measurements]
-
         #println("T = $T, ζ = $ζ, parities = $(parities_arr_2D[idx_T, idx_z, :])")
     end
 end
@@ -150,8 +150,9 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         ζ = zetas[idx_z]
         ts = tstops = [0, T, 2T]#range(0, tspan[2], 1000)
         ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-        correction = 1
-        p = (ramp, ϵs, (ζ, ζ, ζ), 1, 0, P)
+        correction = analytical_exact_simple_correction(ζ, ramp, ts)
+        #correction = SimpleCorrection()
+        p = (ramp, ϵs, (ζ, ζ, ζ), correction, P)
         prob = ODEProblem{inplace}(M, U0, tspan, p)
         sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
         proj = Diagonal([0, 1, 1, 0])
@@ -178,9 +179,9 @@ double_braid_fidelity = zeros(Float64, gridpoints)
 ts = range(0, tspan[2], 2000)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     ramp = RampProtocol([1, 1 / 2, 1 / 4] .* 0, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-    corrmax = MajoranaBraiding.optimized_corrmax(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
-    # corrmax = 1
-    p = (ramp, ϵs, (ζ, ζ, ζ), corrmax, 0, P)
+    # corr = optimized_simple_correction(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
+    corr = analytical_exact_simple_correction(ζ, ramp, ts)
+    p = (ramp, ϵs, (ζ, ζ, ζ), corr, P)
     prob = ODEProblem{inplace}(M, U0, tspan, p)
     sol = solve(prob, Tsit5(), abstol=1e-9, reltol=1e-9, saveat=[0, T, 2T])
     proj = Diagonal([0, 1, 1, 0])
@@ -207,7 +208,7 @@ hline!(twinplt, [4, 8], lw=1, c=:black, ls=:dash, label="slope = [4, 8]")
 ##
 # plot(plt, plot((zetas[2:end]), diff(log.(1 .- double_braid_fidelity)) ./ diff(log.(zetas)), ylims=(0, 9), xscale=:log10, label="∂log(1 - F)/∂log(ζ)", lw=2, yticks=10, frame=:box, markers=true))
 ##
-let xscale = :identity, zetas = zetas 
+let xscale = :identity, zetas = zetas
     plt = plot(frame=:box)
     plot!(plt, zetas, 1 .- single_braid_fidelity; label="1 - F1", xlabel="ζ", lw=2, yscale=:log10, xscale, ylims=(1e-16, 1), markers=true, leg=:topleft)
     plot!(plt, zetas, 1 .- double_braid_fidelity; label="1 - F2", lw=2, markers=true, yscale=:log10, xscale)
@@ -224,16 +225,16 @@ function energy_split(x, η, ramp, t)
     Δs = ramp(t)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    ρ = Δ23/ Δ
+    ρ = Δ23 / Δ
 
-    Η = η * ρ^2 + x * √( 1 - ρ^2 )
-    Λ = ρ * x - ρ * √( 1- ρ^2 ) * η
-    
-    χ = 4*Λ^2 * Η^2 / ( (1+ Λ^2 - Η^2)^2 + 4*Λ^2 * Η^2 )
-    μ = 1/ √(2) * √(1 + √(1 - χ))
-    ν = 1/ √(2) * √(1 - √(1 - χ))
-    α = (Η * μ + Λ * ν)/ √( (Η * μ + Λ * ν)^2 + ν^2 )
-    β = ν/ √( (Η * μ + Λ * ν)^2 + ν^2 )
+    Η = η * ρ^2 + x * √(1 - ρ^2)
+    Λ = ρ * x - ρ * √(1 - ρ^2) * η
+
+    χ = 4 * Λ^2 * Η^2 / ((1 + Λ^2 - Η^2)^2 + 4 * Λ^2 * Η^2)
+    μ = 1 / √(2) * √(1 + √(1 - χ))
+    ν = 1 / √(2) * √(1 - √(1 - χ))
+    α = (Η * μ + Λ * ν) / √((Η * μ + Λ * ν)^2 + ν^2)
+    β = ν / √((Η * μ + Λ * ν)^2 + ν^2)
     vals = β * ν + Η * μ * α + Λ * α * ν + x
     return vals, α, β, μ, ν
 end
