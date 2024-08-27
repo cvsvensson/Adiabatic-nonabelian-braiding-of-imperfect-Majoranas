@@ -36,7 +36,7 @@ tspan = (0.0, 2T)
 ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
 p = (ramp, ϵs, ζs, 1, 1, P)
 H = ham_with_corrections
-H! = ham_with_corrections!
+# H! = ham_with_corrections!
 M = get_op(H, H!, p)
 ts = range(0, tspan[2], 1000)
 
