@@ -21,7 +21,7 @@ use_static_arrays = true
 inplace = !use_static_arrays
 mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
 P = parity_operators(γ, parity, mtype)
-# Pold = MajoranaBraiding.parity_operators_old(nbr_of_majoranas, majorana_labels, use_static_arrays, inplace)
+#=Pold = MajoranaBraiding.parity_operators_old(nbr_of_majoranas, majorana_labels, mtype)=#
 
 H = ham_with_corrections
 ## Parameters
