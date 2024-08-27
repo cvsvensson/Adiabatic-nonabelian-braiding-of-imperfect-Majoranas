@@ -6,6 +6,7 @@ using QuantumDots
 using Optim, Interpolations
 using TestItems
 using Roots
+using Majoranas
 
 export MajoranaWrapper
 export RampProtocol
@@ -20,5 +21,9 @@ include("misc.jl")
 include("hamiltonians.jl")
 include("protocol.jl")
 include("gates.jl")
+
+@static if false
+    include("../scripts/braiding_extra_majoranas.jl")
+end
 
 end

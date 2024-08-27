@@ -1,6 +1,7 @@
 # Braiding following Beenakker's review 1907.06497
 using MajoranaBraiding
 using QuantumDots
+using Majoranas
 using LinearAlgebra
 using Plots
 using OrdinaryDiffEq
@@ -10,22 +11,18 @@ using Base.Threads
 # using TaylorSeries
 using Roots
 
-## Get the majoranas
-c = FermionBasis(1:3, qn=QuantumDots.parity)
-N = length(keys(c))
+
+nbr_of_majoranas = 6
+N = nbr_of_majoranas ÷ 2
 majorana_labels = 0:5
-γ = MajoranaWrapper(c, majorana_labels)
+γ = SingleParticleMajoranaBasis(nbr_of_majoranas, majorana_labels)
+parity = 1
 use_static_arrays = true
 inplace = !use_static_arrays
-mtype, vtype = if use_static_arrays && inplace
-    MMatrix{2^(N - 1),2^(N - 1)}, MVector{2^(N - 1)}
-elseif use_static_arrays && !inplace
-    SMatrix{2^(N - 1),2^(N - 1)}, SVector{2^(N - 1)}
-else
-    Matrix, Vector
-end
-## Couplings
-P = parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])));
+mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
+P = parity_operators(γ, parity, mtype)
+#=Pold = MajoranaBraiding.parity_operators_old(nbr_of_majoranas, majorana_labels, mtype)=#
+
 H = ham_with_corrections
 ## Parameters
 u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors))))
@@ -34,8 +31,8 @@ T = 1e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
-ζ = 9e-1
-ζs = (ζ, ζ, 2 * ζ / 2) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
+ζ = 1e-2
+ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
 dt = 2
@@ -157,7 +154,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         sol = solve(prob, Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
         proj = Diagonal([0, 1, 1, 0])
         # proj = Diagonal([1, 0, 0, 1])
-        single_braid_gate = majorana_exchange(P[3, 2])
+        single_braid_gate = majorana_exchange(P[2, 3])
         single_braid_result = sol(T)
         double_braid_result = sol(2T)
         single_braid_fidelity[idx_z, idx_T] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)
@@ -185,7 +182,7 @@ ts = range(0, tspan[2], 2000)
     prob = ODEProblem{inplace}(M, U0, tspan, p)
     sol = solve(prob, Tsit5(), abstol=1e-9, reltol=1e-9, saveat=[0, T, 2T])
     proj = Diagonal([0, 1, 1, 0])
-    single_braid_gate = majorana_exchange(P[3, 2])
+    single_braid_gate = majorana_exchange(P[2, 3])
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     single_braid_fidelity[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)

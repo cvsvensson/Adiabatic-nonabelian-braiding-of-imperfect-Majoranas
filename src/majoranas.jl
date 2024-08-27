@@ -10,6 +10,7 @@ struct MajoranaWrapper{B,D}
     end
 end
 Base.getindex(g::MajoranaWrapper, i...) = g.majoranas[i...]
+Base.getindex(H::HamiltonianBasis, indices...) = H.dict[[indices...]]
 
 function MajoranaBasis(labels; qn=QuantumDots.parity)
     N = length(labels)
