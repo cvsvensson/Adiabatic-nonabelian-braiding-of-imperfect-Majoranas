@@ -1,4 +1,3 @@
-
 function drho(u, p, t)
     ham = H(p, t)
     return 1im * ham * u
@@ -35,7 +34,7 @@ function parity_operators_old(nbr_of_majoranas, majorana_labels, mtype)
     return parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])));
 end
 
-
+get_op(H, p) = MatrixOperator(H(p, 0, 1im); update_func=(A, u, p, t) -> H(p, t, 1im))
 get_op(H, H!, p) = MatrixOperator(H(p, 0, 1im); update_func=(A, u, p, t) -> H(p, t, 1im), (update_func!)=(A, u, p, t) -> H!(A, p, t, 1im))
 
 @testitem "Test old vs new parities" begin
