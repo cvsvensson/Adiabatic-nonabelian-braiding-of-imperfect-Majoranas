@@ -24,6 +24,7 @@ include("gates.jl")
 
 @static if false
     include("../scripts/braiding_extra_majoranas.jl")
+    include("../scripts/eigen_correction_dec.jl")
 end
 
 end

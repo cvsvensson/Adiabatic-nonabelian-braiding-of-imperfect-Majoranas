@@ -79,8 +79,8 @@ Base.isless(::AbstractCorrection, ::EigenEnergyCorrection) = true
 function full_energy_correction_term(ham)
     vals, vecs = eigen(Hermitian(ham))
     δE = 1 * (vals[1] - vals[2]) / 2
-    δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]') +
-         (vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')
+    δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]')# +
+         #=(vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
     return -δE * δv
 end
 
