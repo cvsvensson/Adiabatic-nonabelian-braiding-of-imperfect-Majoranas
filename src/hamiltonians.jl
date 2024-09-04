@@ -146,3 +146,33 @@ function energy_split(x, η, ramp, t)
     vals = β * ν + Η * μ * α + Λ * α * ν + x
     return vals
 end
+
+function groundstate_components(x, η, ramp, t)
+    Δs = ramp(t)
+    Δ23 = √(Δs[2]^2 + Δs[3]^2)
+    Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
+    ρ = Δ23/ Δ
+
+    Η = η * ρ^2 + x * √( 1 - ρ^2 )
+    Λ = ρ * x - ρ * √( 1- ρ^2 ) * η
+
+    χ = 4*Λ^2 * Η^2 / ( (1+ Λ^2 - Η^2)^2 + 4*Λ^2 * Η^2 )
+    μ = 1/ √(2) * √(1 + √(1 - χ))
+    ν = 1/ √(2) * √(1 - √(1 - χ))
+    α = (Η * μ + Λ * ν)/ √( (Η * μ + Λ * ν)^2 + ν^2 )
+    β = ν/ √( (Η * μ + Λ * ν)^2 + ν^2 )
+
+    return μ, α, β, ν
+end
+
+function single_braid_gate_improved(P, ζ, ramp, T)
+    t = T/2
+    η = ζ^2
+    initial = 0.0
+    result = find_zero(x -> MajoranaBraiding.energy_split(x, η, ramp, t), initial, xtol=1e-6)
+    μ, α, β, ν = MajoranaBraiding.groundstate_components(result, η, ramp, t)
+    θ = atan(μ, ν) / 2
+    ϕ = atan(β, α) / 2
+    unit = Diagonal([1, 1, 1, 1])
+    return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
+end
