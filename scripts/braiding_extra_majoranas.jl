@@ -46,7 +46,7 @@ analyticsimplecorr = analytical_exact_simple_correction(ζ, ramp, ts)
 eigencorrection = EigenEnergyCorrection()
 ##
 #println("corrmax =", corrmax)
-corr = analyticsimplecorr
+corr = eigencorrection
 p = (ramp, ϵs, ζs, corr, P)
 M = get_op(H, p)
 ## Solve the system
