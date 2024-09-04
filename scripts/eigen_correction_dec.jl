@@ -36,16 +36,16 @@ k = 1e1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
-dt = 2
+dt = 100
 ts = range(0, tspan[2], Int(tspan[2] / dt))
-ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1, 1, 1] .* Δmax, T, k)
+ramp = RampProtocol([1, 1, 1] .* Δmin, [1, 1, 1] .* Δmax, T, k)
 corr = MajoranaBraiding.NoCorrection()
 p = (ramp, ϵs, ζs, corr, P)
 #=filter(>(1e-3)∘abs, components)=#
 
 function corr_components(t, p, H)
-    ham_at_1 = H(p, t)
-    eig_corr = MajoranaBraiding.full_energy_correction_term(ham_at_1)
+    ham_at_t = H(p, t)
+    eig_corr = MajoranaBraiding.full_energy_correction_term(ham_at_t, last(p))
     return Majoranas.matrix_to_dict(P, eig_corr)
 end
 full_corr_comp_vec = map(t->corr_components(t, p, H), ts)

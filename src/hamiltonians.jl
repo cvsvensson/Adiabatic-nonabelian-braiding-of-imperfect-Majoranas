@@ -72,16 +72,18 @@ struct EigenEnergyCorrection{T} <: AbstractCorrection
     end
 end
 EigenEnergyCorrection() = EigenEnergyCorrection(t -> true)
-(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham))
+(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham, P))
 Base.isless(::EigenEnergyCorrection, ::AbstractCorrection) = false
 Base.isless(::AbstractCorrection, ::EigenEnergyCorrection) = true
 
-function full_energy_correction_term(ham)
+function full_energy_correction_term(ham, P)
     vals, vecs = eigen(Hermitian(ham))
-    δE = 1 * (vals[1] - vals[2]) / 2
-    δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]')# +
-         #=(vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
-    return -δE * δv
+    δE = (vals[2] - vals[1]) / 2
+    weak_ham_prob = WeakMajoranaProblem(P, vecs, 0, δE, nothing) # push the lowest energy states δE closer together
+    sol = only(solve(weak_ham_prob, Majoranas.WM_BACKSLASH_SPARSE()))
+    #=δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]') + =#
+    #=     (vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
+    return Majoranas.coeffs_to_matrix(P, sol)
 end
 
 function optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
