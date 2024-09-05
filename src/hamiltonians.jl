@@ -76,11 +76,12 @@ EigenEnergyCorrection() = EigenEnergyCorrection(t -> true)
 Base.isless(::EigenEnergyCorrection, ::AbstractCorrection) = false
 Base.isless(::AbstractCorrection, ::EigenEnergyCorrection) = true
 
-function full_energy_correction_term(ham, P)
+function full_energy_correction_term(ham, P, alg=Majoranas.WM_BACKSLASH())
     vals, vecs = eigen(Hermitian(ham))
     δE = (vals[2] - vals[1]) / 2
-    weak_ham_prob = WeakMajoranaProblem(P, vecs, 0, δE, nothing) # push the lowest energy states δE closer together
-    sol = only(solve(weak_ham_prob, Majoranas.WM_BACKSLASH_SPARSE()))
+    # push the lowest energy states δE closer together
+    weak_ham_prob = WeakMajoranaProblem(P, vecs, nothing, [0, 0, 0, δE]) # should we really restrict identity in gs?
+    sol = solve(weak_ham_prob, alg)
     #=δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]') + =#
     #=     (vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
     return Majoranas.coeffs_to_matrix(P, sol)
