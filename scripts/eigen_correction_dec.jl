@@ -63,6 +63,8 @@ remove_labels = [[2,4],[2,5]]
 constrained_basis = MajoranaBraiding.remove_from_basis(remove_labels, P)
 
 full_corr_vec = map(t->corr_matrix(t, p, H, constrained_basis), ts)
+# check that corr hasn't used remove_labels
+norm([Majoranas.hilbert_schmidt_scalar_product(Matrix(corr), P[rem_label...]) for corr in full_corr_vec, rem_label in remove_labels])
 full_corr_comp_vec = map(mat->Majoranas.matrix_to_dict(constrained_basis, mat), full_corr_vec)
 error_hams = map(t->error_ham(t, p), ts)
 projs = map(t->projection_op(t, p, H), ts)
