@@ -33,19 +33,21 @@ T = 1e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
-ζ = 7e-1
+ζ = 9e-1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
 dt = 2
 ts = range(0, tspan[2], Int(tspan[2] / dt))
-ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
+ramp = RampProtocol([2, 1, 1] .* Δmin, [1, 1, 1] .* Δmax, T, k)
 simplecorr = optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts)
 independentsimplecorr = optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts)
 analyticsimplecorr = analytical_exact_simple_correction(ζ, ramp, ts)
-eigencorrection = EigenEnergyCorrection()
+remove_labels = [[0,1], [0,2], [0,3]]
+constrained_basis = MajoranaBraiding.remove_from_basis(remove_labels, P)
+#=constrained_basis = P=#
+eigencorrection = EigenEnergyCorrection(constrained_basis)
 ##
-#println("corrmax =", corrmax)
 corr = eigencorrection
 p = (ramp, ϵs, ζs, corr, P)
 M = get_op(H, p)
