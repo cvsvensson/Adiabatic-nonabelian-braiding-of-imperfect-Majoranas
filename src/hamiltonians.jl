@@ -5,11 +5,16 @@ function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
     Δs = ramp(t)
     Ham = (Δs[1] * P[0, 1] + Δs[2] * P[0, 2] + Δs[3] * P[0, 3] +
            ϵs[1] * P[0, 1] + ϵs[2] * P[2, 4] + ϵs[3] * P[3, 5] +
-           -Δs[2] * ζs[1] * ζs[2] * P[1, 4] - Δs[3] * ζs[1] * ζs[3] * P[1, 5])
+           _error_ham(Δs, ζs, P))
     Ham += correction(t, Δs, ζs, P, Ham)
     return Ham * α
 end
 
+_error_ham(Δs, ζs, P) = -Δs[2] * ζs[1] * ζs[2] * P[1, 4] - Δs[3] * ζs[1] * ζs[3] * P[1, 5]
+function _error_ham(ramp, t, ζs, P)
+    Δs = ramp(t)
+    -Δs[2] * ζs[1] * ζs[2] * P[1, 4] - Δs[3] * ζs[1] * ζs[3] * P[1, 5]
+end
 
 abstract type AbstractCorrection end
 (corr::AbstractCorrection)(t, Δs, ζs, P, ham) = error("(corr::C)(t, Δs, ζs, P, ham) not implemented for C=$(typeof(corr))")
@@ -64,24 +69,28 @@ function (corr::CorrectionSum)(args...)
 end
 
 
-struct EigenEnergyCorrection{T} <: AbstractCorrection
+struct EigenEnergyCorrection{B,T} <: AbstractCorrection
+    basis::B
     scaling::T
-    function EigenEnergyCorrection(scaling)
+    function EigenEnergyCorrection(basis, scaling)
         newscaling = _process_constant_scaling(scaling)
-        new{typeof(newscaling)}(newscaling)
+        new{typeof(basis), typeof(newscaling)}(basis, newscaling)
     end
 end
-EigenEnergyCorrection() = EigenEnergyCorrection(t -> true)
-(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham))
+EigenEnergyCorrection(basis) = EigenEnergyCorrection(basis, t -> true)
+(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham, corr.basis))
 Base.isless(::EigenEnergyCorrection, ::AbstractCorrection) = false
 Base.isless(::AbstractCorrection, ::EigenEnergyCorrection) = true
 
-function full_energy_correction_term(ham)
+function full_energy_correction_term(ham, basis; alg=Majoranas.WM_BACKSLASH())
     vals, vecs = eigen(Hermitian(ham))
-    δE = 1 * (vals[1] - vals[2]) / 2
-    δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]')# +
-         #=(vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
-    return -δE * δv
+    δE = (vals[2] - vals[1]) / 2
+    # push the lowest energy states δE closer together
+    weak_ham_prob = WeakMajoranaProblem(basis, vecs, nothing, [nothing, nothing, nothing, δE])
+    sol = solve(weak_ham_prob, alg)
+    #=δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]') + =#
+    #=     (vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
+    return Majoranas.coeffs_to_matrix(basis, sol)
 end
 
 function optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())

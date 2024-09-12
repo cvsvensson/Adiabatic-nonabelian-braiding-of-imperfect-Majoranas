@@ -27,6 +27,14 @@ function parity_operators(γ::SingleParticleMajoranaBasis, parity, mtype)
     return HamiltonianBasis(QuantumDots.Dictionary(Pnew.dict.indices, transformed_matrices), γ.fermion_basis)
 end
 
+function remove_from_basis(remove_labels, basis)
+    new_dict = copy(basis.dict)
+    for label in remove_labels
+        delete!(new_dict, label)
+    end
+    return HamiltonianBasis(new_dict, basis.fermion_basis) # returns undef on removed labels...
+end
+
 function parity_operators_old(nbr_of_majoranas, majorana_labels, mtype)
     N = div(nbr_of_majoranas, 2)
     c = FermionBasis(1:N, qn=QuantumDots.parity)
