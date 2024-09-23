@@ -13,7 +13,7 @@ end
 _error_ham(Δs, ζs, P) = -Δs[2] * ζs[1] * ζs[2] * P[1, 4] - Δs[3] * ζs[1] * ζs[3] * P[1, 5]
 function _error_ham(ramp, t, ζs, P)
     Δs = ramp(t)
-    -Δs[2] * ζs[1] * ζs[2] * P[1, 4] - Δs[3] * ζs[1] * ζs[3] * P[1, 5]
+    +Δs[2] * ζs[1] * ζs[2] * P[1, 4] + Δs[3] * ζs[1] * ζs[3] * P[1, 5]
 end
 
 abstract type AbstractCorrection end
