@@ -126,62 +126,58 @@ function optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg
     return IndependentSimpleCorrections(linear_interpolation(ts, results))
 end
 
-function analytical_exact_simple_correction(ζ, ramp, ts)
+function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1)
     results = Float64[]
-    η = ζ^2
     for t in ts
         # Find roots of the energy split function
         initial = length(results) > 0 ? results[end] : 0.0
-        result = find_zero(x -> energy_split(x, η, ramp, t), initial)
+        result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
         push!(results, result)
     end
     return SimpleCorrection(linear_interpolation(ts, results))
 end
+function find_zero_energy_from_analytics(ζ, ramp, t, initial=0.0, totalparity=1)
+    result = find_zero(x -> energy_split(x, ζ, ramp, t, totalparity), initial)
+    return result
+end
+function energy_split(x, ζ, ramp, t, totalparity=1)
+    Η, Λ = energy_parameters(x, ζ, ramp, t)
+    μ, α, β, ν = groundstate_components(x, ζ, ramp, t) 
 
-function energy_split(x, η, ramp, t)
+    Δϵ = β * ν + Η * μ * α + Λ * α * ν + x * sign(totalparity) 
+    return Δϵ
+end
+function energy_parameters(x, ζ, ramp, t)
     Δs = ramp(t)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     ρ = Δ23 / Δ
+    η = -ζ^2
 
     Η = η * ρ^2 + x * √(1 - ρ^2)
     Λ = ρ * x - ρ * √(1 - ρ^2) * η
-
-    χ = 4 * Λ^2 * Η^2 / ((1 + Λ^2 - Η^2)^2 + 4 * Λ^2 * Η^2)
-    μ = 1 / √(2) * √(1 + √(1 - χ))
-    ν = 1 / √(2) * √(1 - √(1 - χ))
-    α = (Η * μ + Λ * ν) / √((Η * μ + Λ * ν)^2 + ν^2)
-    β = ν / √((Η * μ + Λ * ν)^2 + ν^2)
-    vals = β * ν + Η * μ * α + Λ * α * ν + x
-    return vals
+    return [Η, Λ]
+end
+function groundstate_components(x, ζ, ramp, t)
+    Η, Λ = energy_parameters(x, ζ, ramp, t)
+    
+    θ_μ = -1/2 * atan(2 * Λ * Η, 1 + Λ^2 - Η^2)
+    μ = cos(θ_μ)
+    ν = sin(θ_μ)
+    
+    θ_α = atan(Η * tan(θ_μ) - Λ)
+    α = cos(θ_α)
+    β = sin(θ_α)
+    return [μ, α, β, ν]
 end
 
-function groundstate_components(x, η, ramp, t)
-    Δs = ramp(t)
-    Δ23 = √(Δs[2]^2 + Δs[3]^2)
-    Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    ρ = Δ23/ Δ
-
-    Η = η * ρ^2 + x * √( 1 - ρ^2 )
-    Λ = ρ * x - ρ * √( 1- ρ^2 ) * η
-
-    χ = 4*Λ^2 * Η^2 / ( (1+ Λ^2 - Η^2)^2 + 4*Λ^2 * Η^2 )
-    μ = 1/ √(2) * √(1 + √(1 - χ))
-    ν = 1/ √(2) * √(1 - √(1 - χ))
-    α = (Η * μ + Λ * ν)/ √( (Η * μ + Λ * ν)^2 + ν^2 )
-    β = ν/ √( (Η * μ + Λ * ν)^2 + ν^2 )
-
-    return μ, α, β, ν
-end
-
-function single_braid_gate_improved(P, ζ, ramp, T)
+function single_braid_gate_improved(P, ζ, ramp, T, totalparity=1)
     t = T/2
-    η = ζ^2
     initial = 0.0
-    result = find_zero(x -> MajoranaBraiding.energy_split(x, η, ramp, t), initial, xtol=1e-6)
-    μ, α, β, ν = MajoranaBraiding.groundstate_components(result, η, ramp, t)
+    result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
+    μ, α, β, ν = MajoranaBraiding.groundstate_components(result, ζ, ramp, t)
     θ = atan(μ, ν) / 2
-    ϕ = atan(β, α) / 2
+    ϕ = -atan(β, α) / 2
     unit = Diagonal([1, 1, 1, 1])
     return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
 end

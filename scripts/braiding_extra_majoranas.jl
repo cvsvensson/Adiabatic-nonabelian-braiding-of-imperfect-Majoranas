@@ -21,19 +21,15 @@ use_static_arrays = true
 inplace = !use_static_arrays
 mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
 P = parity_operators(γ, parity, mtype)
-#=Pold = MajoranaBraiding.parity_operators_old(nbr_of_majoranas, majorana_labels, mtype)=#
-
 H = ham_with_corrections
-P
 ## Parameters
-P
 u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors))))
 Δmax = 1
-T = 1e3 / Δmax
+T = 2e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
-ζ = 9e-1
+ζ = 8e-1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
@@ -51,6 +47,30 @@ eigencorrection = EigenEnergyCorrection(constrained_basis)
 corr = eigencorrection
 p = (ramp, ϵs, ζs, corr, P)
 M = get_op(H, p)
+
+## Check the energy spliting in dependence of λ
+t = 2*T/4
+λ_array = range(-1, 1, length=100)
+energy_split_array = [MajoranaBraiding.energy_split(λ, ζ, ramp, t, parity) for λ in λ_array]
+plot(λ_array, energy_split_array, label="Energy split", xlabel="λ", ylabel="Energy split", lw=2, frame=:box)
+
+## Visualize the correctionηt = T/2
+result = find_zero_energy_from_analytics(ζ, ramp, t, parity)
+μ, α, β, ν = MajoranaBraiding.groundstate_components(result, ζ, ramp, t)
+
+ζ_array = range(1e-4, 1-1e-3, length=100)
+ground_state_array = [MajoranaBraiding.groundstate_components(find_zero_energy_from_analytics(ζ, ramp, t, parity), ζ^2, ramp, t) for ζ in ζ_array]
+# Plot all the components of the ground state as a function of ζ
+labels = ["μ", "α", "β", "ν"]
+for (idx, component) in enumerate(ground_state_array[1])
+    if idx == 1
+        plot(ζ_array, [c[idx] for c in ground_state_array], label=labels[idx], xlabel="ζ", ylabel="Component", lw=2, frame=:box)
+    else
+        plot!(ζ_array, [c[idx] for c in ground_state_array], label=labels[idx], xlabel="ζ", ylabel="Component", lw=2, frame=:box)
+    end
+end
+# Show the plot
+plot!()
 ## Solve the system
 prob = ODEProblem{inplace}(M, u0, tspan, p)
 @time sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts);
@@ -60,7 +80,6 @@ deltas = stack([ramp(t) for t in ts])'
 delta_plot = plot(ts, deltas, label=["Δ01" "Δ02" "Δ03"], xlabel="t", ls=[:solid :dash :dot], lw=3)
 spectrum = stack([eigvals(H(p, t)) for t in ts])'
 plot(plot(ts, mapslices(v -> v[2:end] .- v[1], spectrum, dims=2), ls=[:solid :dash :dot], title="Eᵢ-E₀", labels=[1, 2, 3]', yscale=:log10, ylims=(1e-16, 1e1)), delta_plot, layout=(2, 1), lw=2, frame=:box)
-
 ##
 parities = [(0, 1), (2, 4), (3, 5)] #, (1, 4), (2, 5)
 measurements = map(p -> P[p...], parities)
@@ -73,7 +92,7 @@ U0 = mtype(Matrix{ComplexF64}(I, size(u0, 1), size(u0, 1)))
 prob_full = ODEProblem{inplace}(M, U0, tspan, p)
 @time sol_full = solve(prob_full, Tsit5(), saveat=ts, reltol=1e-6, abstol=1e-6, tstops=ts);
 single_braid_gate = majorana_exchange(-P[2, 3])
-single_braid_gate = single_braid_gate_improved(P, ζ, ramp, T)
+single_braid_gate = single_braid_gate_improved(P, ζ, ramp, T, parity)
 double_braid_gate = single_braid_gate^2
 single_braid_result = sol_full(T)
 double_braid_result = sol_full(2T)
@@ -84,17 +103,17 @@ double_braid_fidelity = gate_fidelity(proj * double_braid_gate * proj, proj * do
 println("Double braid fidelity: ", double_braid_fidelity)
 ##
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
-zetas = range(1e-6, 1 - 1e-2, length=20)
+zetas = range(0, 1, length=50)
 parities_arr = zeros(ComplexF64, length(zetas), length(measurements))
-T = 1e4
+T = 4e4
 tspan = (0.0, 2T)
-ts = range(0, tspan[2], 1000)
+ts = range(0, tspan[2], 4000)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
     ζs = (ζ, ζ,  ζ / 1)
-    corr = analytical_exact_simple_correction(ζ, ramp, ts)
+    corr = analytical_exact_simple_correction(ζ, ramp, ts, parity)
     #corr = optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts)
-    #corr = SimpleCorrection()
+    #corr = optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts)
     p = (ramp, ϵs, ζs, corr, P)
     prob = ODEProblem{inplace}(M, u0, tspan, p)
     sol = solve(prob, Tsit5(), saveat=ts, abstol=1e-6, reltol=1e-6, tstops=ts)
@@ -126,7 +145,7 @@ parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(measurements)
         ts = range(0, tspan[2], 1000)
         ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
         #corr = optimized_simple_correction(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
-        corr = analytical_exact_simple_correction(ζ, ramp, ts)
+        corr = analytical_exact_simple_correction(ζ, ramp, ts, parity)
         # corr = SimpleCorrection()
         p = (ramp, ϵs, (ζ, ζ, ζ), corr, P)
         prob = ODEProblem{inplace}(M, u0, tspan, p)
@@ -154,7 +173,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         ζ = zetas[idx_z]
         ts = range(0, tspan[2], 1000)
         ramp = RampProtocol([1, 1, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-        correction = analytical_exact_simple_correction(ζ, ramp, ts)
+        correction = analytical_exact_simple_correction(ζ, ramp, ts, parity)
         #correction = SimpleCorrection()
         p = (ramp, ϵs, (ζ, ζ, ζ), correction, P)
         prob = ODEProblem{inplace}(M, U0, tspan, p)
@@ -162,7 +181,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         proj = Diagonal([0, 1, 1, 0])
         # proj = Diagonal([1, 0, 0, 1])
         single_braid_gate = majorana_exchange(-P[2, 3])
-        single_braid_gate = single_braid_gate_improved(P, ζ, ramp, T)
+        #single_braid_gate = single_braid_gate_improved(P, ζ, ramp, T, parity)
         double_braid_gate = single_braid_gate^2
         single_braid_result = sol(T)
         double_braid_result = sol(2T)
@@ -176,23 +195,26 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 5
-zetas = range(1e-3, 1-1e-3, length=gridpoints)
+T = 2e3
+k = 1e1
+gridpoints = 40
+zetas = range(0, 1, length=gridpoints)
 # logrange(x, y, n) = exp10.(range(log10(x), log10(y), length=n))
 # zetas = logrange(1e-4, 1, gridpoints)
 single_braid_fidelity = zeros(Float64, gridpoints)
 double_braid_fidelity = zeros(Float64, gridpoints)
-ts = range(0, tspan[2], 2000)
+ts = range(0, tspan[2], 1000)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     ramp = RampProtocol([1, 1 / 2, 1 / 4] .* 0, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
     # corr = optimized_simple_correction(H, (ramp, ϵs, (ζ, ζ, ζ), P), ts)
-    corr = analytical_exact_simple_correction(ζ, ramp, ts)
+    corr = analytical_exact_simple_correction(ζ, ramp, ts, parity)
     p = (ramp, ϵs, (ζ, ζ, ζ), corr, P)
     prob = ODEProblem{inplace}(M, U0, tspan, p)
     sol = solve(prob, Tsit5(), abstol=1e-9, reltol=1e-9, saveat=[0, T, 2T])
     proj = Diagonal([0, 1, 1, 0])
+    proj = Diagonal([1, 0, 0, 1])
     single_braid_gate = majorana_exchange(-P[2, 3])
-    single_braid_gate = single_braid_gate_improved(P, ζ, ramp, T)
+    single_braid_gate = single_braid_gate_improved(P, ζ, ramp, T, parity)
     double_braid_gate = single_braid_gate^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
@@ -201,8 +223,10 @@ ts = range(0, tspan[2], 2000)
 end
 ##
 # Plot the parities as a function of the zetas
+# Change limits of y-axis to [0, 1]
 plot(zetas, single_braid_fidelity, label="single_braid_fidelity", xlabel="ζ", lw=2, frame=:box);
 plot!(zetas, double_braid_fidelity, label="double_braid_fidelity", lw=2, frame=:box)
+#plot!(ylims=(0, 1))
 ##
 plt = plot(frame=:box)
 plot!(plt, zetas, 1 .- single_braid_fidelity, label="1 - F1", xlabel="ζ", lw=2, yscale=:log10, xscale=:log10, ylims=(1e-16, 1), markers=true, leg=:topleft);
