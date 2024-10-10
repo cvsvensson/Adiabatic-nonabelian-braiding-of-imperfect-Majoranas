@@ -172,12 +172,37 @@ function groundstate_components(x, ζ, ramp, t)
 end
 
 function single_braid_gate_improved(P, ζ, ramp, T, totalparity=1)
+    braid_angle = single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity)
+    println("braid_angle: ", braid_angle/π, "π")
+    return exp(1im * braid_angle * P[2, 3])
+    #return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
+end
+
+function single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity=1)
     t = T/2
     initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
     μ, α, β, ν = MajoranaBraiding.groundstate_components(result, ζ, ramp, t)
     θ = atan(μ, ν) / 2
     ϕ = -atan(β, α) / 2
-    unit = Diagonal([1, 1, 1, 1])
-    return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
+    println("θ: ", θ/π, "π")
+    println("ϕ: ", ϕ/π, "π")
+    return θ - ϕ
+end
+
+function single_braid_gate_fit(ω)
+    return exp(1im * ω * P[2, 3])
+end
+
+function braid_gate_prediction(gate, ω)
+    prediction = single_braid_gate_fit(ω)
+
+    proj = Diagonal([0, 1, 1, 0])
+    single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)  
+    return single_braid_fidelity
+end
+
+function braid_gate_best_angle(gate)
+    ω = find_zero(ω -> 1-braid_gate_prediction(gate, ω), 0.0)
+    return ω, braid_gate_prediction(gate, ω)
 end

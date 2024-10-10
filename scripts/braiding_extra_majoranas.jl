@@ -29,7 +29,7 @@ T = 2e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
 ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
-ζ = 8e-1
+ζ = 7e-1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 # Take ts with one step per time unit
@@ -44,7 +44,7 @@ constrained_basis = MajoranaBraiding.remove_from_basis(remove_labels, P)
 #=constrained_basis = P=#
 eigencorrection = EigenEnergyCorrection(constrained_basis)
 ##
-corr = eigencorrection
+corr = analytical_exact_simple_correction(ζ, ramp, ts, parity)
 p = (ramp, ϵs, ζs, corr, P)
 M = get_op(H, p)
 
@@ -101,6 +101,10 @@ single_braid_fidelity = gate_fidelity(proj * single_braid_gate * proj, proj * si
 println("Single braid fidelity: ", single_braid_fidelity)
 double_braid_fidelity = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
 println("Double braid fidelity: ", double_braid_fidelity)
+
+println("Fit of angle for braid gate: ", braid_gate_best_angle(single_braid_gate) )
+
+braid_gate_prediction(single_braid_gate, single_braid_gate_analytical_angle(P, ζ, ramp, T, parity))
 ##
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
 zetas = range(0, 1, length=50)
