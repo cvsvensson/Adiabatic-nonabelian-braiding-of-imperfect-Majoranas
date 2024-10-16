@@ -1,4 +1,3 @@
-# Braiding following Beenakker's review 1907.06497
 using MajoranaBraiding
 using QuantumDots
 using Majoranas
@@ -8,7 +7,6 @@ using OrdinaryDiffEq
 using ProgressMeter
 using StaticArrays
 using Base.Threads
-# using TaylorSeries
 using Roots
 
 ##
