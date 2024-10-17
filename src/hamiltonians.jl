@@ -28,6 +28,8 @@ struct SimpleCorrection{T} <: AbstractCorrection
         new{typeof(newscaling)}(newscaling)
     end
 end
+setup_correction(::NoCorrection, ::Dict) = NoCorrection()
+
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
 (corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[2, 4] + P[3, 5])
