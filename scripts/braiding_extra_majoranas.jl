@@ -35,6 +35,7 @@ param_dict = Dict(
     :k => 1e1,
     :steps => 2000,
     :correction => InterpolatedExactSimpleCorrection(),
+    :interpolate_corrected_hamiltonian => false,
     :P => P,
     :inplace => inplace,
     :γ => γ,
@@ -48,7 +49,8 @@ function setup_problem(dict)
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan)
     corr = MajoranaBraiding.setup_correction(dict[:correction], newdict)
     p = (ramp, dict[:ϵs], dict[:ζ], corr, dict[:P])
-    M = get_op(ham_with_corrections, p)
+    interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
+    M = interpolate ? MajoranaBraiding.get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
     prob = ODEProblem{dict[:inplace]}(M, dict[:u0], tspan, p)
     newdict = Dict(newdict..., :correction => corr)
     return (; odeprob=prob, dict=newdict, op=M, p, ts, T=dict[:T])
@@ -94,6 +96,7 @@ parities_arr = zeros(ComplexF64, length(zetas), length(parity_measurements))
         :k => 1e1,
         :steps => 2000,
         :correction => InterpolatedExactSimpleCorrection(),
+        :interpolate_corrected_hamiltonian => false,
         :P => P,
         :inplace => inplace,
         :γ => γ,
@@ -122,6 +125,7 @@ parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(parity_measur
             :k => 1e1,
             :steps => 2000,
             :correction => InterpolatedExactSimpleCorrection(),
+            :interpolate_corrected_hamiltonian => false,
             :P => P,
             :inplace => inplace,
             :γ => γ,
@@ -154,6 +158,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
             :k => 1e1,
             :steps => 2000,
             :correction => InterpolatedExactSimpleCorrection(),
+            :interpolate_corrected_hamiltonian => false,
             :P => P,
             :inplace => inplace,
             :γ => γ,
@@ -176,9 +181,10 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 10
+gridpoints = 40
 zetas = range(0, 1, length=gridpoints)
 single_braid_fidelity = zeros(Float64, gridpoints)
+single_braid_fidelity_off = zeros(Float64, gridpoints)
 double_braid_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
 analytical_angles = zeros(Float64, gridpoints)
@@ -193,8 +199,10 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         :Δmin => 1e-6 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 2000,
-        :correction => InterpolatedExactSimpleCorrection(),
-        # :correction => EigenEnergyCorrection()(),
+        # :correction => InterpolatedExactSimpleCorrection(),
+        :correction => EigenEnergyCorrection(),
+        # :correction => SimpleCorrection(),
+        :interpolate_corrected_hamiltonian => true,
         :P => P,
         :inplace => inplace,
         :γ => γ,
@@ -204,8 +212,8 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     prob = setup_problem(local_dict)
     sol = solve(prob.odeprob, Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
-    # single_braid_gate = majorana_exchange(-P[2, 3])
-    single_braid_gate = single_braid_gate_improved(prob.dict)
+    single_braid_gate = majorana_exchange(-P[2, 3])
+    single_braid_gate_off = single_braid_gate_improved(prob.dict)
     double_braid_gate = single_braid_gate^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
@@ -213,15 +221,16 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     angles[idx] = braid_gate_best_angle(single_braid_result, P)[1]
     fidelities[idx] = braid_gate_best_angle(single_braid_result, P)[2]
     single_braid_fidelity[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)
+    single_braid_fidelity_off[idx] = gate_fidelity(proj * single_braid_gate_off * proj, proj * single_braid_result * proj)
     double_braid_fidelity[idx] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
 
     fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
-# Plot the parities as a function of the zetas
 plot(zetas, single_braid_fidelity, label="single_braid_fidelity", xlabel="ζ", lw=2, frame=:box);
+plot!(zetas, single_braid_fidelity_off, label="single_braid_fidelity_off", lw=2, frame=:box)
 plot!(zetas, double_braid_fidelity, label="double_braid_fidelity", lw=2, frame=:box)
-plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ζ", lw=2, frame=:box)
+# plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ζ", lw=2, frame=:box)
 ## plot angles 
 plot(zetas, angles, label="angles", xlabel="ζ", lw=2, frame=:box)
 plot!(zetas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
@@ -246,4 +255,5 @@ maj_hams2 = [1im * prod(diagonal_majoranas(prob.dict, t))[1:4, 1:4] for t in pro
 hams = [prob.op(Matrix(I, 4, 4), prob.p, t) for t in prob.ts]
 
 [abs(tr(P[0, 2] * h)) for h in hams] |> plot
+[abs(tr(P[0, 2] * h)) for h in maj_hams1] |> plot!
 [abs(tr(P[0, 2] * h)) for h in maj_hams2] |> plot!

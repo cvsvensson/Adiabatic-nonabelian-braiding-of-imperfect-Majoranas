@@ -68,7 +68,7 @@ function (corr::CorrectionSum)(args...)
     end
     foldl(f, corr.corrections, init=(0I, ham0))[1]
 end
-setup_correction(corr::CorrectionSum, d::Dict) = CorrectionSum(setup_correction.(corr.corrections, d))
+setup_correction(corr::CorrectionSum, d::Dict) = CorrectionSum(map(corr -> setup_correction(corr, d), corr.corrections))
 
 
 struct EigenEnergyCorrection{T} <: AbstractCorrection

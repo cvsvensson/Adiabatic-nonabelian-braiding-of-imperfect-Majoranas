@@ -105,7 +105,7 @@ function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
     γ1 = α * γ[0] + β * (ρ2 * γ[4] + ρ3 * γ[5])
     γ2 = μ * (ρ2 * γ[2] + ρ3 * γ[3]) + ν * γ[1]
 
-    return γ1, γ2
+    return γ1, γ2, Δtot
 end
 
 
