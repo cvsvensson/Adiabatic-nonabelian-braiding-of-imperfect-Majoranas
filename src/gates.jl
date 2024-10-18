@@ -70,3 +70,60 @@ gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
 
     @test gate_overlaps(majorana_braid(γ[1], γ[3]), gates)[:Y] ≈ -1
 end
+
+
+single_braid_gate_improved(d::Dict) = single_braid_gate_improved(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function single_braid_gate_improved(P, ζ, ramp, T, totalparity=1)
+    braid_angle = single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity)
+    # println("braid_angle: ", braid_angle/π, "π")
+    return exp(1im * braid_angle * P[2, 3])
+    #return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
+end
+single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity=1)
+    t = T / 2
+    initial = 0.0
+    result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
+    μ, α, β, ν = groundstate_components(result, ζ, ramp, t)
+    θ = atan(μ, ν) / 2
+    ϕ = -atan(β, α) / 2
+    # println("θ: ", θ/π, "π")
+    # println("ϕ: ", ϕ/π, "π")
+    return θ - ϕ
+end
+
+diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], totalparity)
+
+function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
+    result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
+    μ, α, β, ν = groundstate_components(result, ζ, ramp, t)
+    Δs = ramp(t)
+    Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
+    ρ2 = Δs[2] / Δtot
+    ρ3 = Δs[3] / Δtot
+
+    γ1 = α * γ[0] + β * (ρ2 * γ[4] + ρ3 * γ[5])
+    γ2 = μ * (ρ2 * γ[2] + ρ3 * γ[3]) + ν * γ[1]
+
+    return γ1, γ2, Δtot
+end
+
+
+function single_braid_gate_fit(ω, P)
+    return exp(1im * ω * P[2, 3])
+end
+
+function braid_gate_prediction(gate, ω, P)
+    prediction = single_braid_gate_fit(ω, P)
+
+    proj = Diagonal([0, 1, 1, 0])
+    single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)
+    return single_braid_fidelity
+end
+
+function braid_gate_best_angle(gate, P)
+    # ω = find_zero(ω -> 1-braid_gate_prediction(gate, ω, P), 0.0)
+    ## Use optim intead
+    ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P), 0.0, π / 2).minimizer
+    return ω, braid_gate_prediction(gate, ω, P)
+end

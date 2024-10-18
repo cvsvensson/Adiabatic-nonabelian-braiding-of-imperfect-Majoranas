@@ -39,11 +39,18 @@ function parity_operators_old(nbr_of_majoranas, majorana_labels, mtype)
     N = div(nbr_of_majoranas, 2)
     c = FermionBasis(1:N, qn=QuantumDots.parity)
     γ = MajoranaWrapper(c, majorana_labels)
-    return parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])));
+    return parity_operators(γ, p -> (mtype(p[2^(N-1)+1:end, 2^(N-1)+1:end])))
 end
 
 get_op(H, p) = MatrixOperator(H(p, 0, 1im); update_func=(A, u, p, t) -> H(p, t, 1im))
 get_op(H, H!, p) = MatrixOperator(H(p, 0, 1im); update_func=(A, u, p, t) -> H(p, t, 1im), (update_func!)=(A, u, p, t) -> H!(A, p, t, 1im))
+
+function get_iH_interpolation(H, p, ts)
+    cubic_spline_interpolation(ts, [H(p, t, 1im) for t in ts], extrapolation_bc = Periodic())
+end
+get_iH_interpolation_op(H, p, ts) = get_op_from_interpolation(get_iH_interpolation(H, p, ts))
+get_op_from_interpolation(int) = MatrixOperator(int(0.0); update_func=(A, u, p, t) -> int(t))
+
 
 @testitem "Test old vs new parities" begin
     using Majoranas

@@ -9,8 +9,9 @@ function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
     Ham += correction(t, Δs, ζs, P, Ham)
     return Ham * α
 end
-
+_error_ham(Δs, ζ::Number, P) = _error_ham(Δs, (ζ, ζ, ζ), P)
 _error_ham(Δs, ζs, P) = +Δs[2] * ζs[1] * ζs[2] * P[1, 4] + Δs[3] * ζs[1] * ζs[3] * P[1, 5]
+_error_ham(ramp, t, ζ::Number, P) = _error_ham(ramp, t, (ζ, ζ, ζ), P)
 function _error_ham(ramp, t, ζs, P)
     Δs = ramp(t)
     +Δs[2] * ζs[1] * ζs[2] * P[1, 4] + Δs[3] * ζs[1] * ζs[3] * P[1, 5]
@@ -27,9 +28,12 @@ struct SimpleCorrection{T} <: AbstractCorrection
         new{typeof(newscaling)}(newscaling)
     end
 end
+setup_correction(::NoCorrection, ::Dict) = NoCorrection()
+
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
 (corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[2, 4] + P[3, 5])
+setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
 struct IndependentSimpleCorrections{T} <: AbstractCorrection
     scaling::T
@@ -40,6 +44,8 @@ function IndependentSimpleCorrections(scaling1, scaling2)
     IndependentSimpleCorrections(t -> (newscaling1(t), newscaling2(t)))
 end
 IndependentSimpleCorrections(scalings::Vector{<:Number}) = length(scalings) == 2 ? IndependentSimpleCorrections(scalings...) : error("scalings must be a vector of length 2")
+setup_correction(corr::IndependentSimpleCorrections, ::Dict) = corr
+
 _process_constant_scaling(scaling::Number) = t -> scaling
 _process_constant_scaling(scaling) = scaling
 
@@ -50,9 +56,6 @@ function (corr::IndependentSimpleCorrections)(t, Δs, ζs, P, ham)
 end
 struct CorrectionSum
     corrections::Vector{<:AbstractCorrection}
-    function CorrectionSum(corrections)
-        new(sort(corrections))
-    end
 end
 Base.:+(corr1::AbstractCorrection, corr2::AbstractCorrection) = CorrectionSum([corr1, corr2])
 Base.:+(corr::CorrectionSum, corr2::AbstractCorrection) = CorrectionSum([corr.corrections..., corr2])
@@ -67,31 +70,47 @@ function (corr::CorrectionSum)(args...)
     end
     foldl(f, corr.corrections, init=(0I, ham0))[1]
 end
+setup_correction(corr::CorrectionSum, d::Dict) = CorrectionSum(map(corr -> setup_correction(corr, d), corr.corrections))
 
 
-struct EigenEnergyCorrection{B,T} <: AbstractCorrection
-    basis::B
+struct EigenEnergyCorrection{T} <: AbstractCorrection
     scaling::T
-    function EigenEnergyCorrection(basis, scaling)
+    function EigenEnergyCorrection(scaling)
         newscaling = _process_constant_scaling(scaling)
-        new{typeof(basis), typeof(newscaling)}(basis, newscaling)
+        new{typeof(newscaling)}(newscaling)
     end
 end
-EigenEnergyCorrection(basis) = EigenEnergyCorrection(basis, t -> true)
-(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham, corr.basis))
-Base.isless(::EigenEnergyCorrection, ::AbstractCorrection) = false
-Base.isless(::AbstractCorrection, ::EigenEnergyCorrection) = true
+EigenEnergyCorrection() = EigenEnergyCorrection(t -> true)
+(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham))
+setup_correction(corr::EigenEnergyCorrection, ::Dict) = corr
 
-function full_energy_correction_term(ham, basis; alg=Majoranas.WM_BACKSLASH())
+function full_energy_correction_term(ham)
+    vals, vecs = eigen(Hermitian(ham))
+    δE = (vals[2] - vals[1]) / 2
+    δE * (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]')
+end
+
+struct WeakEnergyCorrection{B,T} <: AbstractCorrection
+    basis::B
+    scaling::T
+    function WeakEnergyCorrection(basis, scaling)
+        newscaling = _process_constant_scaling(scaling)
+        new{typeof(basis),typeof(newscaling)}(basis, newscaling)
+    end
+end
+setup_correction(corr::WeakEnergyCorrection, ::Dict) = corr
+WeakEnergyCorrection(basis) = WeakEnergyCorrection(basis, t -> true)
+(corr::WeakEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * weak_energy_correction_term(ham, corr.basis))
+
+function weak_energy_correction_term(ham, basis; alg=Majoranas.WM_BACKSLASH())
     vals, vecs = eigen(Hermitian(ham))
     δE = (vals[2] - vals[1]) / 2
     # push the lowest energy states δE closer together
     weak_ham_prob = WeakMajoranaProblem(basis, vecs, nothing, [nothing, nothing, nothing, δE])
     sol = solve(weak_ham_prob, alg)
-    #=δv = (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]') + =#
-    #=     (vecs[:, 3] * vecs[:, 3]' - vecs[:, 4] * vecs[:, 4]')=#
     return Majoranas.coeffs_to_matrix(basis, sol)
 end
+
 
 function optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
     results = Float64[]
@@ -124,85 +143,4 @@ function optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg
         push!(results, result.minimizer)
     end
     return IndependentSimpleCorrections(linear_interpolation(ts, results))
-end
-
-function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1)
-    results = Float64[]
-    for t in ts
-        # Find roots of the energy split function
-        initial = length(results) > 0 ? results[end] : 0.0
-        result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
-        push!(results, result)
-    end
-    return SimpleCorrection(linear_interpolation(ts, results))
-end
-function find_zero_energy_from_analytics(ζ, ramp, t, initial=0.0, totalparity=1)
-    result = find_zero(x -> energy_split(x, ζ, ramp, t, totalparity), initial)
-    return result
-end
-function energy_split(x, ζ, ramp, t, totalparity=1)
-    Η, Λ = energy_parameters(x, ζ, ramp, t)
-    μ, α, β, ν = groundstate_components(x, ζ, ramp, t) 
-
-    Δϵ = β * ν + Η * μ * α + Λ * α * ν + x * sign(totalparity) 
-    return Δϵ
-end
-function energy_parameters(x, ζ, ramp, t)
-    Δs = ramp(t)
-    Δ23 = √(Δs[2]^2 + Δs[3]^2)
-    Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    ρ = Δ23 / Δ
-    η = -ζ^2
-
-    Η = η * ρ^2 + x * √(1 - ρ^2)
-    Λ = ρ * x - ρ * √(1 - ρ^2) * η
-    return [Η, Λ]
-end
-function groundstate_components(x, ζ, ramp, t)
-    Η, Λ = energy_parameters(x, ζ, ramp, t)
-    
-    θ_μ = -1/2 * atan(2 * Λ * Η, 1 + Λ^2 - Η^2)
-    μ = cos(θ_μ)
-    ν = sin(θ_μ)
-    
-    θ_α = atan(Η * tan(θ_μ) - Λ)
-    α = cos(θ_α)
-    β = sin(θ_α)
-    return [μ, α, β, ν]
-end
-
-function single_braid_gate_improved(P, ζ, ramp, T, totalparity=1)
-    braid_angle = single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity)
-    println("braid_angle: ", braid_angle/π, "π")
-    return exp(1im * braid_angle * P[2, 3])
-    #return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
-end
-
-function single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity=1)
-    t = T/2
-    initial = 0.0
-    result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
-    μ, α, β, ν = MajoranaBraiding.groundstate_components(result, ζ, ramp, t)
-    θ = atan(μ, ν) / 2
-    ϕ = -atan(β, α) / 2
-    println("θ: ", θ/π, "π")
-    println("ϕ: ", ϕ/π, "π")
-    return θ - ϕ
-end
-
-function single_braid_gate_fit(ω)
-    return exp(1im * ω * P[2, 3])
-end
-
-function braid_gate_prediction(gate, ω)
-    prediction = single_braid_gate_fit(ω)
-
-    proj = Diagonal([0, 1, 1, 0])
-    single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)  
-    return single_braid_fidelity
-end
-
-function braid_gate_best_angle(gate)
-    ω = find_zero(ω -> 1-braid_gate_prediction(gate, ω), 0.0)
-    return ω, braid_gate_prediction(gate, ω)
 end

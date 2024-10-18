@@ -4,15 +4,15 @@ struct RampProtocol{Mi,Ma,T,F}
     total_time::T
     smooth_step::F
     function RampProtocol(Δmin::Mi, Δmax::Ma, total_time::T, smooth_step::F) where {Mi,Ma,T,F}
-        if length(Δmin) != 3 || length(Δmax) != 3
-            throw(ArgumentError("Δmin and Δmax must have length 3"))
-        end
-        new{Mi,Ma,T,F}(Δmin, Δmax, total_time, smooth_step)
+        Δmin = process_delta(Δmin)
+        Δmax = process_delta(Δmax)
+        new{typeof(Δmin),typeof(Δmax),T,F}(Δmin, Δmax, total_time, smooth_step)
     end
 end
 
 RampProtocol(Δmin, Δmax, T, k::Number) = RampProtocol(Δmin, Δmax, T, smooth_step(k))
-
+process_delta(Δ::Number) = Δ .* [1, 1, 1]
+process_delta(Δ) = Δ
 smooth_step(k, x) = 1 / 2 + tanh(k * x) / 2
 smooth_step(k) = Base.Fix1(smooth_step, k)
 
