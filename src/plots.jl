@@ -14,7 +14,6 @@ function measure_parities(sol, P, parities=[(0, 1), (2, 4), (3, 5)])
     [real(expval(P[p...], sol)) for p in parities]
 end
 
-visualize_parities(sol, dict::Dict, parities=[(0, 1), (2, 4), (3, 5)]) = visualize_parities(sol, dict[:P], parities)
 function visualize_parities(sol, P, parities=[(0, 1), (2, 4), (3, 5)]; ts=sol.t)
     ts = sol.t
     measurements = map(p -> P[p...], parities)
