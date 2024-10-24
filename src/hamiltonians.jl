@@ -131,6 +131,7 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1)
     for t in ts
         # Find roots of the energy split function
         initial = length(results) > 0 ? results[end] : 0.0
+        initial = 0.0
         result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
         push!(results, result)
     end
@@ -172,10 +173,26 @@ function groundstate_components(x, ζ, ramp, t)
 end
 
 function single_braid_gate_improved(P, ζ, ramp, T, totalparity=1)
-    braid_angle = single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity)
-    println("braid_angle: ", braid_angle/π, "π")
-    return exp(1im * braid_angle * P[2, 3])
+    θ_α, θ_μ = single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity)
+
+    U_12 = exp(+1im * (1 * π/4 + 0 * θ_μ/2) * 0 * P[1, 2] + 0 * 1im * θ_α/2 * P[0, 4])  # Deactivated via 0 *
+    U_23 = exp(+1im * π/4 * (cos(θ_α)^2 ) * P[2, 3] + 1im * π/4 * sin(θ_μ)^2 * P[4, 5]
+                + 0 * 1im * 1/2 * cos(θ_μ) * sin(θ_μ) * (P[1, 3] - P[1, 2])             # Deactivated via 0 *
+                + 0 * 1im * 1/2 * cos(θ_α) * sin(θ_α) * (P[0, 5] - P[0, 4]) )           # Deactivated via 0 *
+    U_31 = exp(-1im * (1 * π/4 + 0 * θ_μ/2) * 0 * P[1, 3] - 0 * 1im * θ_α/2 * P[0, 5])  # Deactivated via 0 *
+    # return matrix multiplication of the three unitaries
+    return U_31 * U_23 * U_12
     #return ( cos(θ) * unit + sin(θ) *  (1im) * P[2, 3] ) * (cos(ϕ) * unit + sin(ϕ) * (1im) * P[4, 5])
+end
+
+function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1)
+    θ_α, θ_μ = single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity)
+    
+    α = cos(θ_α)
+    ν = sin(θ_μ)
+
+    U = exp(1im * π/4 * (α - ν) * P[2, 3])
+    return U
 end
 
 function single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity=1)
@@ -183,11 +200,13 @@ function single_braid_gate_analytical_angle(P, ζ, ramp, T, totalparity=1)
     initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
     μ, α, β, ν = MajoranaBraiding.groundstate_components(result, ζ, ramp, t)
-    θ = atan(μ, ν) / 2
-    ϕ = -atan(β, α) / 2
-    println("θ: ", θ/π, "π")
-    println("ϕ: ", ϕ/π, "π")
-    return θ - ϕ
+    #θ = atan(μ, ν) / 2
+    #ϕ = -atan(β, α) /2
+
+    θ_α = atan(β, α)
+    θ_μ = atan(ν, μ)
+    
+    return θ_α, θ_μ
 end
 
 function single_braid_gate_fit(ω)
@@ -197,12 +216,17 @@ end
 function braid_gate_prediction(gate, ω)
     prediction = single_braid_gate_fit(ω)
 
+    proj = Diagonal([1, 0, 0, 1])
     proj = Diagonal([0, 1, 1, 0])
     single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)  
     return single_braid_fidelity
 end
 
 function braid_gate_best_angle(gate)
-    ω = find_zero(ω -> 1-braid_gate_prediction(gate, ω), 0.0)
+    # ω = find_zero(ω -> 1-braid_gate_prediction(gate, ω), 0.0)
+    # I want to rewrite the above line
+    # Instead of a true zero I want to search a minimum of the function abs(1 - braid_gate_prediction(gate, ω))
+    # I want to use Optim.optimize to do this
+    ω = optimize(ω -> abs(1 - braid_gate_prediction(gate, ω)), 0.0, π/2).minimizer
     return ω, braid_gate_prediction(gate, ω)
 end
