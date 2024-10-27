@@ -39,11 +39,13 @@ param_dict = Dict(
     :P => P,
     :inplace => inplace,
     :γ => γ,
-    :u0 => u0
+    :u0 => u0,
+    :extra_shifts => [0, 0, 0] # in multiples of T
 )
 
 function setup_problem(dict)
-    ramp = RampProtocol(dict[:Δmin], dict[:Δmax], dict[:T], dict[:k])
+    extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
+    ramp = RampProtocol(dict[:Δmin], dict[:Δmax], dict[:T], dict[:k], extra_shifts)
     tspan = (0.0, 2 * dict[:T])
     ts = range(0, tspan[2], dict[:steps])
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan)
