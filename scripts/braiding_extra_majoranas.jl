@@ -39,11 +39,13 @@ param_dict = Dict(
     :P => P,
     :inplace => inplace,
     :γ => γ,
-    :u0 => u0
+    :u0 => u0,
+    :extra_shifts => [0, 0, 0] # in multiples of T
 )
 
 function setup_problem(dict)
-    ramp = RampProtocol(dict[:Δmin], dict[:Δmax], dict[:T], dict[:k])
+    extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
+    ramp = RampProtocol(dict[:Δmin], dict[:Δmax], dict[:T], dict[:k], extra_shifts)
     tspan = (0.0, 2 * dict[:T])
     ts = range(0, tspan[2], dict[:steps])
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan)
@@ -52,7 +54,7 @@ function setup_problem(dict)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
     M = interpolate ? MajoranaBraiding.get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
     prob = ODEProblem{dict[:inplace]}(M, dict[:u0], tspan, p)
-    newdict = Dict(newdict..., :correction => corr)
+    newdict = Dict(newdict..., :correction => corr, :p => p)
     return (; odeprob=prob, dict=newdict, op=M, p, ts, T=dict[:T])
 end
 ## Solve the system
@@ -60,15 +62,17 @@ prob = setup_problem(param_dict)
 @time sol = solve(prob.odeprob, Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [1 .- norm(sol(t)) for t in sol.t], label="norm error", xlabel="t")
 ##
-visualize_protocol(prob.dict)
-##
+visualize_spectrum(prob.dict)
+visualize_deltas(prob.dict)
 visualize_parities(sol, prob.dict)
+visualize_groundstate_components(prob.dict)
+visualize_protocol(prob.dict)
 ##
 full_gate_param_dict = @set param_dict[:u0] = U0
 prob_full = setup_problem(full_gate_param_dict)#ODEProblem{inplace}(M, U0, tspan, p)
 @time sol_full = solve(prob_full.odeprob, Tsit5(), reltol=1e-6, abstol=1e-6);
 single_braid_gate = majorana_exchange(-P[2, 3])
-single_braid_gate = single_braid_gate_improved(prob_full.dict)
+single_braid_gate = single_braid_gate_kato(prob_full.dict)
 double_braid_gate = single_braid_gate^2
 single_braid_result = sol_full(prob_full.dict[:T])
 double_braid_result = sol_full(2prob_full.dict[:T])
@@ -169,7 +173,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         proj = Diagonal([0, 1, 1, 0])
         # proj = Diagonal([1, 0, 0, 1])
         single_braid_gate = majorana_exchange(-P[2, 3])
-        # single_braid_gate = single_braid_gate_improved(prob.dict)
+        # single_braid_gate = single_braid_gate_kato(prob.dict)
         double_braid_gate = single_braid_gate^2
         single_braid_result = sol(T)
         double_braid_result = sol(2T)
@@ -183,9 +187,10 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 40
 zetas = range(0, 1, length=gridpoints)
-single_braid_fidelity = zeros(Float64, gridpoints)
-single_braid_fidelity_off = zeros(Float64, gridpoints)
-double_braid_fidelity = zeros(Float64, gridpoints)
+single_braid_ideal_fidelity = zeros(Float64, gridpoints)
+single_braid_kato_fidelity = zeros(Float64, gridpoints)
+double_braid_ideal_fidelity = zeros(Float64, gridpoints)
+double_braid_kato_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
 analytical_angles = zeros(Float64, gridpoints)
 fidelities = zeros(Float64, gridpoints)
@@ -213,28 +218,35 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     prob = setup_problem(local_dict)
     sol = solve(prob.odeprob, Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
-    single_braid_gate = majorana_exchange(-P[2, 3])
-    single_braid_gate_off = single_braid_gate_improved(prob.dict)
-    double_braid_gate = single_braid_gate^2
+    single_braid_gate_ideal = majorana_exchange(-P[2, 3])
+    single_braid_gate_kato_ = single_braid_gate_kato(prob.dict)
+    double_braid_gate_ideal = single_braid_gate_ideal^2
+    double_braid_gate_kato = single_braid_gate_kato_^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob.dict)
     angles[idx] = braid_gate_best_angle(single_braid_result, P)[1]
     fidelities[idx] = braid_gate_best_angle(single_braid_result, P)[2]
-    single_braid_fidelity[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)
-    single_braid_fidelity_off[idx] = gate_fidelity(proj * single_braid_gate_off * proj, proj * single_braid_result * proj)
-    double_braid_fidelity[idx] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
+    single_braid_ideal_fidelity[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * single_braid_result * proj)
+    single_braid_kato_fidelity[idx] = gate_fidelity(proj * single_braid_gate_kato_ * proj, proj * single_braid_result * proj)
+    double_braid_ideal_fidelity[idx] = gate_fidelity(proj * double_braid_gate_ideal * proj, proj * double_braid_result * proj)
+    double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_result * proj)
 
     fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
-plot(zetas, single_braid_fidelity, label="single_braid_fidelity", xlabel="ζ", lw=2, frame=:box);
-plot!(zetas, single_braid_fidelity_off, label="single_braid_fidelity_off", lw=2, frame=:box)
-plot!(zetas, double_braid_fidelity, label="double_braid_fidelity", lw=2, frame=:box)
-# plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ζ", lw=2, frame=:box)
+plot(zetas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ζ", lw=2, frame=:box)
+plot!(zetas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)
+plot!(zetas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
+plot!(zetas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
+plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ζ", lw=2, frame=:box)
 ## plot angles 
 plot(zetas, angles, label="angles", xlabel="ζ", lw=2, frame=:box)
 plot!(zetas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
+##
+plot(zetas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
+plot!(zetas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
+
 
 ##
 let xscale = :identity, zetas = zetas
