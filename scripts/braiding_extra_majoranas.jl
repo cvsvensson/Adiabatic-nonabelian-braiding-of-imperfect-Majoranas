@@ -249,7 +249,7 @@ plot!(zetas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=
 
 
 ##
-let xscale = :identity, zetas = zetas
+let xscale = :identity, zetas = zetas, single_braid_fidelity = single_braid_ideal_fidelity, double_braid_fidelity = double_braid_ideal_fidelity
     plt = plot(frame=:box)
     plot!(plt, zetas, 1 .- single_braid_fidelity; label="1 - F1", xlabel="ζ", lw=2, yscale=:log10, xscale, ylims=(1e-16, 1), markers=true, leg=:topleft)
     plot!(plt, zetas, 1 .- double_braid_fidelity; label="1 - F2", lw=2, markers=true, yscale=:log10, xscale)
