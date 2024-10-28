@@ -28,19 +28,19 @@ U0 = mtype(Matrix{ComplexF64}(I, size(u0, 1), size(u0, 1)))
 ##
 param_dict = Dict(
     :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
-    :ϵs => (0, 0, 0),
-    :T => 2e3,
-    :Δmax => 1 * (rand(3) .+ 0.5),
-    :Δmin => 1e-6 * (rand(3) .+ 0.5),
-    :k => 1e1,
-    :steps => 2000,
-    :correction => InterpolatedExactSimpleCorrection(),
-    :interpolate_corrected_hamiltonian => false,
-    :P => P,
-    :inplace => inplace,
-    :γ => γ,
-    :u0 => u0,
-    :extra_shifts => [0, 0, 0] # in multiples of T
+    :ϵs => (0, 0, 0), #Dot energy levels
+    :T => 2e3, #Maximum time
+    :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
+    :Δmin => 1e-6 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+    :k => 1e1, #Determines the slope of the ramp
+    :steps => 2000, #Number of timesteps for interpolations
+    :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+    :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
+    :P => P, #Dict with parity operators
+    :inplace => inplace, #Does the hamiltonian act in place? I'm not sure this works anymore
+    :γ => γ, #Majorana basis
+    :u0 => u0, #Initial state. Use U0 for the identity matrix.
+    :extra_shifts => [0, 0, 0] #Shifts the three Δ pulses. Given as fractions of T
 )
 
 function setup_problem(dict)
