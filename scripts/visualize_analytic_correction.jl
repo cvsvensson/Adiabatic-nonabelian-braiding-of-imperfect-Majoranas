@@ -17,7 +17,7 @@ mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
 P = parity_operators(γ, parity, mtype)
 H = ham_with_corrections
 ## Parameters
-u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[0, 1] + P[2, 4] + P[3, 5]), 1:1).vectors))))
+u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M,:M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
 Δmax = 1
 T = 2e3 / Δmax
 k = 1e1

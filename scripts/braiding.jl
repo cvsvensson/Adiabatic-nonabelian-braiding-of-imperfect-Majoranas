@@ -10,7 +10,7 @@ majorana_labels = 0:3
 γ = MajoranaWrapper(c, majorana_labels)
 ## Couplings
 P = parity_operators(γ)
-Ps = (P[0, 1], P[0, 2], P[0, 3]);
+Ps = (P[:M,:M̃], P[:M,:L], P[:M,:R]);
 ##
 function H((T, Δmin, Δmax, k), t)
     Δs = braiding_deltas(t, T, Δmin, Δmax, k)
@@ -18,7 +18,7 @@ function H((T, Δmin, Δmax, k), t)
 end
 
 ## Parameters
-u0 = first(eachcol(eigen(Hermitian(P[1, 4] + P[2, 5] - P[0, 3]), 1:1).vectors))
+u0 = first(eachcol(eigen(Hermitian(P[:M̃,:L̃] + P[2, 5] - P[:M,:R]), 1:1).vectors))
 T = 1000 # Total time for single braiding
 k = 100 / T # Larger k means steeper steps for the couplings
 Δmax = 1e3 / T

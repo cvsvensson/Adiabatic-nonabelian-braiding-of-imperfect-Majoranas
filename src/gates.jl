@@ -77,11 +77,11 @@ single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp]
 analytical_gates(d::Dict) = analytical_gates(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function analytical_gates(P, ζ, ramp, T, totalparity)
     θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    U_12 = exp(+1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[1, 2] + 0 * 1im * θ_α / 2 * P[0, 4])  # Deactivated via 0 *
-    U_23 = exp(+1im * π / 4 * (cos(θ_α)^2) * P[2, 3] + 1im * π / 4 * sin(θ_μ)^2 * P[4, 5]
-               + 0 * 1im * 1 / 2 * cos(θ_μ) * sin(θ_μ) * (P[1, 3] - P[1, 2])             # Deactivated via 0 *
-               + 0 * 1im * 1 / 2 * cos(θ_α) * sin(θ_α) * (P[0, 5] - P[0, 4]))           # Deactivated via 0 *
-    U_31 = exp(-1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[1, 3] - 0 * 1im * θ_α / 2 * P[0, 5])
+    U_12 = exp(+1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[:M̃, :L] + 0 * 1im * θ_α / 2 * P[:M, :L̃])  # Deactivated via 0 *
+    U_23 = exp(+1im * π / 4 * (cos(θ_α)^2) * P[:L, :R] + 1im * π / 4 * sin(θ_μ)^2 * P[:L̃, :R̃]
+               + 0 * 1im * 1 / 2 * cos(θ_μ) * sin(θ_μ) * (P[:M̃, :R] - P[:M̃, :L])             # Deactivated via 0 *
+               + 0 * 1im * 1 / 2 * cos(θ_α) * sin(θ_α) * (P[:M, :R̃] - P[:M, :L̃]))           # Deactivated via 0 *
+    U_31 = exp(-1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[:M̃, :R] - 0 * 1im * θ_α / 2 * P[:M, :R̃])
     return U_12, U_23, U_31
 end
 function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1)
@@ -93,7 +93,7 @@ function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1)
     θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
     α = cos(θ_α)
     ν = sin(θ_μ)
-    U = exp(1im * π / 4 * (α - ν) * P[2, 3])
+    U = exp(1im * π / 4 * (α - ν) * P[:L, :R])
     return U
 end
 
@@ -127,15 +127,15 @@ function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
     ρ2 = Δs[2] / Δtot
     ρ3 = Δs[3] / Δtot
 
-    γ1 = α * γ[0] + β * (ρ2 * γ[4] + ρ3 * γ[5])
-    γ2 = μ * (ρ2 * γ[2] + ρ3 * γ[3]) + ν * γ[1]
+    γ1 = α * γ[:M] + β * (ρ2 * γ[:L̃] + ρ3 * γ[:R̃])
+    γ2 = μ * (ρ2 * γ[:L] + ρ3 * γ[:R]) + ν * γ[:M̃]
 
     return γ1, γ2, Δtot
 end
 
 
 function single_braid_gate_fit(ω, P)
-    return exp(1im * ω * P[2, 3])
+    return exp(1im * ω * P[:L, :R])
 end
 
 function braid_gate_prediction(gate, ω, P)

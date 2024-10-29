@@ -7,7 +7,7 @@ end
 visualize_deltas(d::Dict) = visualize_deltas(d[:ramp], d[:ts], d[:T])
 function visualize_deltas(ramp, ts, T)
     deltas = stack([ramp(t) for t in ts])'
-    plot(ts / T, deltas, label=["Δ01" "Δ02" "Δ03"],ylabel = "Δs", xlabel="t/T", ls=[:solid :dash :dot], lw=3, frame=:box)
+    plot(ts / T, deltas, label=["ΔMM̃" "ΔML" "ΔMR"], ylabel="Δs", xlabel="t/T", ls=[:solid :dash :dot], lw=3, frame=:box)
 end
 function visualize_protocol(dict::Dict)
     energyplot = visualize_spectrum(dict)
@@ -20,16 +20,17 @@ end
 
 expval(m::AbstractMatrix, ψ) = dot(ψ, m, ψ)
 measure_parities(sol, dict::Dict, args...; kwargs...) = measure_parities(sol, dict[:P], args...; kwargs...)
-function measure_parities(sol, P, parities=[(0, 1), (2, 4), (3, 5)])
+default_parity_pairs = [(:L, :L̃), (:M, :M̃), (:R, :R̃)]
+function measure_parities(sol, P, parities=default_parity_pairs)
     [real(expval(P[p...], sol)) for p in parities]
 end
 
-function visualize_parities(sol, P, T, parities=[(0, 1), (2, 4), (3, 5)]; ts=sol.t)
-    ts = sol.t
+parity_labels(parities) = permutedims(map(p -> join(p, ""), parities))
+function visualize_parities(sol, P, T, parities=default_parity_pairs; ts=sol.t)
     measurements = map(p -> P[p...], parities)
-    plot(ts / T, [real(expval(m, sol(t))) for m in measurements, t in ts]', label=permutedims(parities), legend=true, xlabel="t / T", ylims=(-1, 1), lw=2, frame=:box)
+    plot(ts / T, [real(expval(m, sol(t))) for m in measurements, t in ts]', label=parity_labels(parities), legend=true, xlabel="t / T", ylims=(-1, 1), lw=2, frame=:box)
 end
-visualize_parities(sol, dict::Dict, parities=[(0, 1), (2, 4), (3, 5)]) = visualize_parities(sol, dict[:P], dict[:T], parities)
+visualize_parities(sol, dict::Dict, parities=default_parity_pairs) = visualize_parities(sol, dict[:P], dict[:T], parities)
 
 visualize_groundstate_components(d::Dict) = visualize_groundstate_components(d[:ζ], d[:ramp], d[:ts], d[:T], get(d, :totalparity, 1))
 function visualize_groundstate_components(ζ, ramp, ts, T, totalparity)

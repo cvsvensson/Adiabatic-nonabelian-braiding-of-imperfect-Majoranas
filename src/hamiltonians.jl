@@ -3,18 +3,18 @@ ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
 
 function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
     Δs = ramp(t)
-    Ham = (Δs[1] * P[0, 1] + Δs[2] * P[0, 2] + Δs[3] * P[0, 3] +
-           ϵs[1] * P[0, 1] + ϵs[2] * P[2, 4] + ϵs[3] * P[3, 5] +
+    Ham = (Δs[1] * P[:M,:M̃] + Δs[2] * P[:M,:L] + Δs[3] * P[:M,:R] +
+           ϵs[1] * P[:M,:M̃] + ϵs[2] * P[:L, :L̃] + ϵs[3] * P[:R, :R̃] +
            _error_ham(Δs, ζs, P))
     Ham += correction(t, Δs, ζs, P, Ham)
     return Ham * α
 end
 _error_ham(Δs, ζ::Number, P) = _error_ham(Δs, (ζ, ζ, ζ), P)
-_error_ham(Δs, ζs, P) = +Δs[2] * ζs[1] * ζs[2] * P[1, 4] + Δs[3] * ζs[1] * ζs[3] * P[1, 5]
+_error_ham(Δs, ζs, P) = +Δs[2] * ζs[1] * ζs[2] * P[:M̃,:L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃,:R̃]
 _error_ham(ramp, t, ζ::Number, P) = _error_ham(ramp, t, (ζ, ζ, ζ), P)
 function _error_ham(ramp, t, ζs, P)
     Δs = ramp(t)
-    +Δs[2] * ζs[1] * ζs[2] * P[1, 4] + Δs[3] * ζs[1] * ζs[3] * P[1, 5]
+    +Δs[2] * ζs[1] * ζs[2] * P[:M̃,:L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃,:R̃]
 end
 
 abstract type AbstractCorrection end
@@ -32,7 +32,7 @@ setup_correction(::NoCorrection, ::Dict) = NoCorrection()
 
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
-(corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[2, 4] + P[3, 5])
+(corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[:L, :L̃] + P[:R, :R̃])
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
 struct IndependentSimpleCorrections{T} <: AbstractCorrection
@@ -52,7 +52,7 @@ _process_constant_scaling(scaling) = scaling
 function (corr::IndependentSimpleCorrections)(t, Δs, ζs, P, ham)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     scaling = corr.scaling(t)
-    scaling[1] * Δ * P[2, 4] + scaling[2] * Δ * P[3, 5]
+    scaling[1] * Δ * P[:L, :L̃] + scaling[2] * Δ * P[:R, :R̃]
 end
 struct CorrectionSum
     corrections::Vector{<:AbstractCorrection}
