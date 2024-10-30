@@ -124,7 +124,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         proj = Diagonal([0, 1, 1, 0])
         # proj = Diagonal([1, 0, 0, 1])
         single_braid_gate = majorana_exchange(-P[:L, :R])
-        # single_braid_gate = single_braid_gate_kato(prob.dict)
+        # single_braid_gate = analytical_protocol_gate(prob.dict)
         double_braid_gate = single_braid_gate^2
         single_braid_result = sol(T)
         double_braid_result = sol(2T)
@@ -133,9 +133,6 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
     end
 end
 ## Makie.jl plots with heatmaps in a grid
-
-
-
 
 plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Single braid fidelity", clim=(0, 1)),
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
@@ -148,7 +145,7 @@ single_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_ideal_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
-analytical_angles = zeros(Float64, gridpoints)
+analytical_angle = zeros(Float64, gridpoints)
 parity_measurements = MajoranaBraiding.default_parity_pairs
 parity_labels = MajoranaBraiding.parity_labels(parity_measurements)
 parities = zeros(Float64, length(zetas), length(parity_measurements))
@@ -186,10 +183,10 @@ double_fidelities = zeros(Float64, gridpoints, length(gate_labels))
 
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     angles[n] = braid_gate_best_angle(single_braid_result, P)[1]
-    single_braid_gates = [ideal_single_braid, single_braid_gate_kato(prob), fermion_single_braid, MajoranaBraiding.single_braid_gate_fit(angles[n], P)]
+    single_braid_gates = [ideal_single_braid, analytical_protocol_gate(prob), fermion_single_braid, MajoranaBraiding.single_braid_gate_fit(angles[n], P)]
     double_braid_gates = [g^2 for g in single_braid_gates]
 
-    analytical_angles[n] = single_braid_gate_analytical_angle(prob)
+    analytical_angle[n] = single_braid_gate_analytical_angle(prob)
     # fidelities[n] = braid_gate_best_angle(single_braid_result, P)[2]
     single_fidelities[n, :] .= [gate_fidelity(proj * target_gate * proj, proj * single_braid_result * proj) for target_gate in single_braid_gates]
     double_fidelities[n, :] .= [gate_fidelity(proj * target_gate * proj, proj * double_braid_result * proj) for target_gate in double_braid_gates]
@@ -197,7 +194,7 @@ double_fidelities = zeros(Float64, gridpoints, length(gate_labels))
 
 end
 ## Make a makie grid layout with all fidelities
-let labels_fidelities = collect(zip(gate_labels, eachcol(single_fidelities), eachcol(double_fidelities)))[[1, 3]]
+let labels_fidelities = collect(zip(gate_labels, eachcol(single_fidelities), eachcol(double_fidelities)))[[1, 2, 3]]
     f = Figure(; size=(400, 300), fontsize=15)
     ax = Axis(f[1, 1], xlabel="ζ", ylabel="Fidelity")
     ylims!(0 - 1e-3, 1 + 1e-3)
@@ -257,7 +254,29 @@ for (label, data) in collect(zip(gate_labels, eachcol(single_fidelities)))[[2, 4
 end
 axislegend(; position=(:left, :center))
 f
+## Plot analytical angles
+f = Figure()
+ax = Axis(f[1, 1], xlabel="ζ", ylabel="Angle")
+lines!(ax, zetas .^ 2, angles, label="best angle")
+lines!(ax, zetas .^ 2, analytical_angles[:, 1], label="analytical θ")
+lines!(ax, zetas .^ 2, analytical_angles[:, 2], label="analytical ϕ")
+axislegend(; position=(:left, :center))
+f
+##
+single_fidelities[:, 1] .- cos.((analytical_angle .- pi / 4)) .^ 2 |> norm
+double_fidelities[:, 1] .- cos.((analytical_angle .- pi / 4) * 2) .^ 2 |> norm
+parities[:, 1] .- cos.(angles) .^ 2 |> norm
 
+
+## Let's look at the analytical optimization problem
+params = (; Δmax=1 * [1 / 3, 100 / 2, 100], Δmin=1e-6 * [2, 1 / 3, 1], k=1e1, T=2e4)
+ramp = RampProtocol(params.Δmin, params.Δmax, params.T, params.k)
+xs = range(-1, 1, length=100)
+zetas = range(0, 1, length=117)
+energy_splittings = [MajoranaBraiding.energy_splitting(x, ζ, ramp, params.T / 2) for x in xs, ζ in zetas]
+fig, ax, hm = heatmap(xs, zetas, energy_splittings, colormap=:redsblues, colorrange=(-1, 1), axis=(; xlabel="x", ylabel="ζ", title="Energy splitting"))
+Colorbar(fig[:, end+1], hm)
+fig
 ##
 plot(zetas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ζ", lw=2, frame=:box)
 plot!(zetas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)

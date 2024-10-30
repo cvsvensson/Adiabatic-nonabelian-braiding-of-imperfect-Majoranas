@@ -47,14 +47,14 @@ plot(sol.t, [1 .- norm(sol(t)) for t in sol.t], label="norm error", xlabel="t")
 visualize_spectrum(prob)
 visualize_deltas(prob)
 visualize_parities(sol, prob)
-visualize_groundstate_components(prob)
+visualize_analytic_parameters(prob)
 visualize_protocol(prob)
 ##
 full_gate_param_dict = @set param_dict[:u0] = U0
 prob_full = setup_problem(full_gate_param_dict)#ODEProblem{inplace}(M, U0, tspan, p)
 @time sol_full = solve(prob_full[:odeprob], Tsit5(), reltol=1e-6, abstol=1e-6);
 single_braid_gate = majorana_exchange(-P[:L, :R])
-single_braid_gate = single_braid_gate_kato(prob_full)
+single_braid_gate = analytical_protocol_gate(prob_full)
 double_braid_gate = single_braid_gate^2
 single_braid_result = sol_full(prob_full[:T])
 double_braid_result = sol_full(2prob_full[:T])
@@ -156,7 +156,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         proj = Diagonal([0, 1, 1, 0])
         # proj = Diagonal([1, 0, 0, 1])
         single_braid_gate = majorana_exchange(-P[:L, :R])
-        # single_braid_gate = single_braid_gate_kato(prob)
+        # single_braid_gate = analytical_protocol_gate(prob)
         double_braid_gate = single_braid_gate^2
         single_braid_result = sol(T)
         double_braid_result = sol(2T)
@@ -202,16 +202,16 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     sol = solve(prob[:odeprob], Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     single_braid_gate_ideal = majorana_exchange(-P[:L, :R])
-    single_braid_gate_kato_ = single_braid_gate_kato(prob)
+    analytical_protocol_gate_ = analytical_protocol_gate(prob)
     double_braid_gate_ideal = single_braid_gate_ideal^2
-    double_braid_gate_kato = single_braid_gate_kato_^2
+    double_braid_gate_kato = analytical_protocol_gate_^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
     angles[idx] = braid_gate_best_angle(single_braid_result, P)[1]
     fidelities[idx] = braid_gate_best_angle(single_braid_result, P)[2]
     single_braid_ideal_fidelity[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * single_braid_result * proj)
-    single_braid_kato_fidelity[idx] = gate_fidelity(proj * single_braid_gate_kato_ * proj, proj * single_braid_result * proj)
+    single_braid_kato_fidelity[idx] = gate_fidelity(proj * analytical_protocol_gate_ * proj, proj * single_braid_result * proj)
     double_braid_ideal_fidelity[idx] = gate_fidelity(proj * double_braid_gate_ideal * proj, proj * double_braid_result * proj)
     double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_result * proj)
 

@@ -38,14 +38,14 @@ t = 2 * T / 4
 energy_split_array = [MajoranaBraiding.energy_splitting(λ, ζ, ramp, t, parity) for λ in λ_array]
 plot(λ_array, energy_split_array, label="Energy split", xlabel="λ", ylabel="Energy split", lw=2, frame=:box)
 
-## Visualize the correctionηt = T/2
+## Visualize the correction at t = T/2
 result = find_zero_energy_from_analytics(ζ, ramp, t, parity)
-μ, α, β, ν = MajoranaBraiding.groundstate_components(result, ζ, ramp, t)
+H, Λ,  μ, α, β, ν, θ_α, θ_μ = MajoranaBraiding.analytic_parameters(result, ζ, ramp, t)
 
 ζ_array = range(1e-4, 1 - 1e-3, length=100)
-ground_state_array = [MajoranaBraiding.groundstate_components(find_zero_energy_from_analytics(ζ, ramp, t, parity), ζ^2, ramp, t) for ζ in ζ_array]
+ground_state_array = [MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(ζ, ramp, t, parity), ζ^2, ramp, t) for ζ in ζ_array]
 # Plot all the components of the ground state as a function of ζ
-labels = ["μ", "α", "β", "ν"]
+labels = ["H", "Λ", "μ", "α", "β", "ν", "θ_α", "θ_μ"]
 for (idx, component) in enumerate(ground_state_array[1])
     if idx == 1
         plot(ζ_array, [c[idx] for c in ground_state_array], label=labels[idx], xlabel="ζ", ylabel="Component", lw=2, frame=:box)

@@ -12,7 +12,7 @@ end
 function visualize_protocol(dict::Dict)
     energyplot = visualize_spectrum(dict)
     deltaplot = visualize_deltas(dict)
-    componentplot = visualize_groundstate_components(dict)
+    componentplot = visualize_analytic_parameters(dict)
     xlabel!(energyplot, "")
     xlabel!(deltaplot, "")
     plot(energyplot, deltaplot, componentplot, layout=(3, 1), size=400 .* (1, 1.5), frame=:box)
@@ -32,8 +32,8 @@ function visualize_parities(sol, P, T, parities=default_parity_pairs; ts=sol.t)
 end
 visualize_parities(sol, dict::Dict, parities=default_parity_pairs) = visualize_parities(sol, dict[:P], dict[:T], parities)
 
-visualize_groundstate_components(d::Dict) = visualize_groundstate_components(d[:ζ], d[:ramp], d[:ts], d[:T], get(d, :totalparity, 1))
-function visualize_groundstate_components(ζ, ramp, ts, T, totalparity)
+visualize_analytic_parameters(d::Dict) = visualize_analytic_parameters(d[:ζ], d[:ramp], d[:ts], d[:T], get(d, :totalparity, 1))
+function visualize_analytic_parameters(ζ, ramp, ts, T, totalparity)
     component_array_over_time = stack(groundstate_components(find_zero_energy_from_analytics(ζ, ramp, t, totalparity), ζ^2, ramp, t) for t in ts)'
     component_labels = ["μ" "α" "β" "ν"]
     plot(ts / T, component_array_over_time, label=component_labels, xlabel="t / T", ylabel="Component", lw=2, frame=:box)

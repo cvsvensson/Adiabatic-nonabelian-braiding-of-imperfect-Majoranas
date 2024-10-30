@@ -72,27 +72,20 @@ gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
 end
 
 
-single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-
-analytical_gates(d::Dict) = analytical_gates(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-function analytical_gates(P, ζ, ramp, T, totalparity)
-    θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    U_12 = exp(+1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[:M̃, :L] + 0 * 1im * θ_α / 2 * P[:M, :L̃])  # Deactivated via 0 *
-    U_23 = exp(+1im * π / 4 * (cos(θ_α)^2) * P[:L, :R] + 1im * π / 4 * sin(θ_μ)^2 * P[:L̃, :R̃]
-               + 0 * 1im * 1 / 2 * cos(θ_μ) * sin(θ_μ) * (P[:M̃, :R] - P[:M̃, :L])             # Deactivated via 0 *
-               + 0 * 1im * 1 / 2 * cos(θ_α) * sin(θ_α) * (P[:M, :R̃] - P[:M, :L̃]))           # Deactivated via 0 *
-    U_31 = exp(-1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[:M̃, :R] - 0 * 1im * θ_α / 2 * P[:M, :R̃])
-    return U_12, U_23, U_31
+analytical_protocol_gate(d::Dict) = analytical_protocol_gate(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function analytical_protocol_gate(P, ζ, ramp, T, totalparity)
+    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
+    return exp(1im * π / 4 * (α * P[:L, :R] + ν * P[:L̃, :R̃]))
 end
-function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1)
-    foldr(*, analytical_gates(P, ζ, ramp, T, totalparity))
-end
+# function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1)
+#     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity))
+# end
 
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1)
-    θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    α = cos(θ_α)
-    ν = sin(θ_μ)
+    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
+    # α = cos(θ_α)
+    # ν = sin(θ_μ)
     U = exp(1im * π / 4 * (α - ν) * P[:L, :R])
     return U
 end
@@ -104,15 +97,13 @@ function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
     t = T / 2
     initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
-    μ, α, β, ν = groundstate_components(result, ζ, ramp, t)
-    θ_α = atan(β, α)
-    θ_μ = atan(ν, μ)
-    return θ_α, θ_μ
+    H, Λ, μ, α, β, ν, θ_α, θ_μ = analytic_parameters(result, ζ, ramp, t)
+    return α, ν
 end
 function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
-    θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    α = cos(θ_α)
-    ν = sin(θ_μ)
+    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
+    # α = cos(θ_α)^1
+    # ν = sin(θ_μ)^1
     return π / 4 * (α - ν)
 end
 
@@ -121,7 +112,7 @@ diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ra
 
 function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
-    μ, α, β, ν = groundstate_components(result, ζ, ramp, t)
+    μ, α, β, ν, θ_α, θ_μ = groundstate_components(result, ζ, ramp, t)
     Δs = ramp(t)
     Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     ρ2 = Δs[2] / Δtot
