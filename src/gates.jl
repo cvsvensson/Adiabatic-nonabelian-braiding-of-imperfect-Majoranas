@@ -77,11 +77,17 @@ single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp]
 analytical_gates(d::Dict) = analytical_gates(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function analytical_gates(P, ζ, ramp, T, totalparity)
     θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    U_12 = exp(+1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[1, 2] + 0 * 1im * θ_α / 2 * P[0, 4])  # Deactivated via 0 *
-    U_23 = exp(+1im * π / 4 * (cos(θ_α)^2) * P[2, 3] + 1im * π / 4 * sin(θ_μ)^2 * P[4, 5]
-               + 0 * 1im * 1 / 2 * cos(θ_μ) * sin(θ_μ) * (P[1, 3] - P[1, 2])             # Deactivated via 0 *
-               + 0 * 1im * 1 / 2 * cos(θ_α) * sin(θ_α) * (P[0, 5] - P[0, 4]))           # Deactivated via 0 *
-    U_31 = exp(-1im * (1 * π / 4 + 0 * θ_μ / 2) * 0 * P[1, 3] - 0 * 1im * θ_α / 2 * P[0, 5])
+    μ = cos(θ_μ)
+    α = cos(θ_α)
+    ν = sin(θ_μ)
+    β = sin(θ_α)
+    ϕ_μ = π / 4 - θ_μ/2
+    ϕ_α = θ_α/2
+    U_12 = exp(+1im * ϕ_μ * P[1, 2] + 1im * ϕ_α * P[0, 4])
+    U_23 = exp(+1im * π / 4 * (μ^2 * P[2, 3] + β^2 * P[4, 5])
+               + 1im * 1 / 2 * μ * ν * (P[1, 3] - P[1, 2])
+               + 1im * 1 / 2 * α * β * (P[0, 5] - P[0, 4]))
+    U_31 = exp(-1im * ϕ_μ * P[1, 3] - 1im * ϕ_α * P[0, 5])
     return U_12, U_23, U_31
 end
 function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1)
@@ -90,10 +96,8 @@ end
 
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1)
-    θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    α = cos(θ_α)
-    ν = sin(θ_μ)
-    U = exp(1im * π / 4 * (α - ν) * P[2, 3])
+    angle = single_braid_gate_analytical_angle(ζ, ramp, T, totalparity)
+    U = exp(1im * angle * P[2, 3])
     return U
 end
 
@@ -113,9 +117,8 @@ function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
     θ_α, θ_μ = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
     α = cos(θ_α)
     ν = sin(θ_μ)
-    return π / 4 * (α - ν)
+    return π / 4 * ((1 - ν) -totalparity * (1 - α) )
 end
-
 
 diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], totalparity)
 

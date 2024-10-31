@@ -186,7 +186,7 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 40
-zetas = range(0, 1, length=gridpoints)
+zetas = range(0.001, 1, length=gridpoints)
 single_braid_ideal_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_ideal_fidelity = zeros(Float64, gridpoints)
@@ -235,9 +235,9 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
-plot(zetas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ζ", lw=2, frame=:box)
-plot!(zetas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)
-plot!(zetas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
+#plot(zetas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ζ", lw=2, frame=:box)
+#plot!(zetas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)
+plot(zetas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
 plot!(zetas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
 plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ζ", lw=2, frame=:box)
 ## plot angles 
