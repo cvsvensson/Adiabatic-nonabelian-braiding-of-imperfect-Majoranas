@@ -199,7 +199,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :ζ => ζ,
         :ϵs => (0, 0, 0),
-        :T => 2e3,
+        :T => 2e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-6 * [2, 1 / 3, 1],
         :k => 1e1,
@@ -220,6 +220,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     single_braid_gate_ideal = majorana_exchange(-P[2, 3])
     single_braid_gate_kato_ = single_braid_gate_kato(prob.dict)
+    single_braid_gate_kato_ = single_braid_gate_lucky_guess(prob.dict)
     double_braid_gate_ideal = single_braid_gate_ideal^2
     double_braid_gate_kato = single_braid_gate_kato_^2
     single_braid_result = sol(T)
@@ -235,8 +236,8 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
-#plot(zetas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ζ", lw=2, frame=:box)
-#plot!(zetas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)
+plot(zetas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ζ", lw=2, frame=:box)
+plot!(zetas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)
 plot(zetas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
 plot!(zetas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
 plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ζ", lw=2, frame=:box)
@@ -244,8 +245,8 @@ plot!(zetas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analyt
 plot(zetas, angles, label="angles", xlabel="ζ", lw=2, frame=:box)
 plot!(zetas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
 ##
-plot(zetas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
-plot!(zetas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
+plot(zetas, 1 .- single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
+plot!(zetas, 1 .- double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
 
 
 ##

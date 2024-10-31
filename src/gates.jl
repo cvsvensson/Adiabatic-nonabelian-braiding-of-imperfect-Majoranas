@@ -88,7 +88,7 @@ function analytical_gates(P, ζ, ramp, T, totalparity)
                + 1im * 1 / 2 * μ * ν * (P[1, 3] - P[1, 2])
                + 1im * 1 / 2 * α * β * (P[0, 5] - P[0, 4]))
     U_31 = exp(-1im * ϕ_μ * P[1, 3] - 1im * ϕ_α * P[0, 5])
-    return U_12, U_23, U_31
+    return U_31, U_23, U_12
 end
 function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1)
     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity))
