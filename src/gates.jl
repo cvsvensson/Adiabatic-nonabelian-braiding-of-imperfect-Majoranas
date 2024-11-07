@@ -42,7 +42,9 @@ function gate_overlaps(gate, gates::Dict)
     Dict(k => tr(gate * v) / 2 for (k, v) in pairs(gates))
 end
 
-gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
+#gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
+# Can you write the above function using trace, * and dagger?
+gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2))
 
 @testitem "majorana_exchange" begin
     using LinearAlgebra, QuantumDots
@@ -101,6 +103,12 @@ function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1)
     return U
 end
 
+analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1)
+    result = find_zero_energy_from_analytics(ζ, ramp, T/2, 0.0, totalparity)
+    μ, α, β, ν = groundstate_components(result, ζ, ramp, T/2)
+    return cos(π / 4 * (1 - α + ν))^2
+end
 
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
