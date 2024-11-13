@@ -42,9 +42,9 @@ function gate_overlaps(gate, gates::Dict)
     Dict(k => tr(gate * v) / 2 for (k, v) in pairs(gates))
 end
 
-#gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
+gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
 # Can you write the above function using trace, * and dagger?
-gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2))
+#gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2)))
 
 @testitem "majorana_exchange" begin
     using LinearAlgebra, QuantumDots
@@ -133,13 +133,27 @@ diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ra
 function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
     μ, α, β, ν = groundstate_components(result, ζ, ramp, t)
+    Η, Λ = energy_parameters(result, ζ, ramp, t)
     Δs = ramp(t)
     Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    ρ2 = Δs[2] / Δtot
-    ρ3 = Δs[3] / Δtot
+    Δ_23 = √(Δs[2]^2 + Δs[3]^2)
+    θ_23 = atan(Δ_23, Δs[1])
+    ϕ_23 = atan(Δs[3], Δs[2])
 
-    γ1 = α * γ[0] + β * (ρ2 * γ[4] + ρ3 * γ[5])
-    γ2 = μ * (ρ2 * γ[2] + ρ3 * γ[3]) + ν * γ[1]
+    ρ1 = cos(θ_23)
+    ρ2 = sin(θ_23)*cos(ϕ_23)
+    ρ3 = sin(θ_23)*sin(ϕ_23)
+    
+    Δtot *= α*μ - Η*β*ν - Λ*β*μ
+
+    γ_ϕ = cos(ϕ_23) * γ[2] + sin(ϕ_23) * γ[3]
+    γ_η = cos(ϕ_23) * γ[4] + sin(ϕ_23) * γ[5]
+    γ_θ = cos(θ_23) * γ[1] + sin(θ_23) * γ_ϕ
+    γ_Θ_disc = cos(θ_23) * γ_ϕ - sin(θ_23) * γ[1]
+
+    γ1 = α * γ[0] + β * γ_η
+    γ2 = μ * γ_ϕ + ν * γ[1]
+    #γ2 = μ * γ_θ + ν * γ_Θ_disc
 
     return γ1, γ2, Δtot
 end
