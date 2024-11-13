@@ -153,7 +153,7 @@ function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
 
     γ1 = α * γ[0] + β * γ_η
     γ2 = μ * γ_ϕ + ν * γ[1]
-    #γ2 = μ * γ_θ + ν * γ_Θ_disc
+    #γ2 = μ * γ_θ + ν * γ_Θ_disc    # Generalization of γ2 for Δ_1 > 0
 
     return γ1, γ2, Δtot
 end
