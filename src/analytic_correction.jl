@@ -31,7 +31,7 @@ end
 Calculate (analytically) the energy splitting between the two lowest energy levels of the system. Works only when all ζs are the same?
 """
 function energy_splitting(x, ζ, ramp, t, totalparity=1)
-    H, Λ, μ, α, β, ν, θ_α, θ_μ = analytic_parameters(x, ζ, ramp, t)
+    (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(x, ζ, ramp, t)
 
     Δϵ = β * ν + H * μ * α + Λ * α * ν + x * sign(totalparity)
     return Δϵ

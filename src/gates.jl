@@ -117,36 +117,51 @@ function zero_energy_analytic_parameters(ζ, ramp, T, totalparity=1; opt_kwargs.
     return analytic_parameters(result, ζ, ramp, t)
 end
 
-# single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-# function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
-#     t = T / 2
-#     initial = 0.0
-#     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
-#     H, Λ, μ, α, β, ν, θ_α, θ_μ = analytic_parameters(result, ζ, ramp, t)
-#     return α, ν
-# end
-# function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
-#     α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-#     # α = cos(θ_α)^1
-#     # ν = sin(θ_μ)^1
-#     return π / 4 * (α - ν)
-# end
+single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
+    t = T / 2
+    initial = 0.0
+    result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
+    (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
+    return α, ν
+end
+single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
+    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
+    # α = cos(θ_α)^1
+    # ν = sin(θ_μ)^1
+    return π / 4 * (α - ν)
+end
 
 
 diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], totalparity)
 
 function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
-    μ, α, β, ν, θ_α, θ_μ = groundstate_components(result, ζ, ramp, t)
+    (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     Δs = ramp(t)
     Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    ρ2 = Δs[2] / Δtot
-    ρ3 = Δs[3] / Δtot
+    Δ_23 = √(Δs[2]^2 + Δs[3]^2)
+    θ_23 = atan(Δ_23, Δs[1])
+    ϕ_23 = atan(Δs[3], Δs[2])
 
-    γ1 = α * γ[:M] + β * (ρ2 * γ[:L̃] + ρ3 * γ[:R̃])
-    γ2 = μ * (ρ2 * γ[:L] + ρ3 * γ[:R]) + ν * γ[:M̃]
+    ρ1 = cos(θ_23)
+    ρ2 = sin(θ_23) * cos(ϕ_23)
+    ρ3 = sin(θ_23) * sin(ϕ_23)
 
+    Δtot *= α * μ - H * β * ν - Λ * β * μ
+
+    γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
+    γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
+    γ_θ = cos(θ_23) * γ[:M̃] + sin(θ_23) * γ_ϕ
+    γ_Θ_disc = cos(θ_23) * γ_ϕ - sin(θ_23) * γ[:M̃]
+    # old_labels_to_new = Dict(zip(0:5, [:M, :M̃, :L, :R, :L̃, :R̃]))
+
+    γ1 = α * γ[:M] + β * γ_η
+    γ2 = μ * γ_ϕ + ν * γ[:M̃]
+    # γ2 = μ * γ_θ + ν * γ_Θ_disc    # Generalization of γ2 for Δ_1 > 0
     return γ1, γ2, Δtot
+
 end
 
 

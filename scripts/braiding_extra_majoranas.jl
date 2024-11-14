@@ -51,10 +51,10 @@ visualize_analytic_parameters(prob)
 visualize_protocol(prob)
 ##
 full_gate_param_dict = @set param_dict[:u0] = U0
-prob_full = setup_problem(full_gate_param_dict)#ODEProblem{inplace}(M, U0, tspan, p)
+prob_full = setup_problem(full_gate_param_dict)
 @time sol_full = solve(prob_full[:odeprob], Tsit5(), reltol=1e-6, abstol=1e-6);
 single_braid_gate = majorana_exchange(-P[:L, :R])
-single_braid_gate = analytical_protocol_gate(prob_full)
+single_braid_gate = single_braid_gate_kato(prob_full)
 double_braid_gate = single_braid_gate^2
 single_braid_result = sol_full(prob_full[:T])
 double_braid_result = sol_full(2prob_full[:T])
@@ -253,3 +253,7 @@ hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]
 [abs(tr(P[:M, :L] * h)) for h in hams] |> plot
 [abs(tr(P[:M, :L] * h)) for h in maj_hams1] |> plot!
 [abs(tr(P[:M, :L] * h)) for h in maj_hams2] |> plot!
+##
+[abs(tr(h1' * h2)) / (norm(h1) * norm(h2)) for (h1, h2) in zip(hams, hams)] |> plot
+[abs(tr(h1' * h2)) / (norm(h1) * norm(h2)) for (h1, h2) in zip(hams, maj_hams1)] |> plot!
+[abs(tr(h1' * h2) / (norm(h1) * norm(h2))) for (h1, h2) in zip(hams, maj_hams2)] |> plot!

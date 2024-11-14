@@ -40,7 +40,7 @@ plot(λ_array, energy_split_array, label="Energy split", xlabel="λ", ylabel="En
 
 ## Visualize the correction at t = T/2
 result = find_zero_energy_from_analytics(ζ, ramp, t, parity)
-H, Λ,  μ, α, β, ν, θ_α, θ_μ = MajoranaBraiding.analytic_parameters(result, ζ, ramp, t)
+(; H, Λ, μ, α, β, ν, θ_α, θ_μ) = MajoranaBraiding.analytic_parameters(result, ζ, ramp, t)
 
 ζ_array = range(1e-4, 1 - 1e-3, length=100)
 ground_state_array = [MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(ζ, ramp, t, parity), ζ^2, ramp, t) for ζ in ζ_array]
