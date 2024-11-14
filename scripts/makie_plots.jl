@@ -98,11 +98,11 @@ end
 
 ## Calculate full solution for T and 2T and calculate the fidelities
 gridpoints = 10
-T_arr = range(1e2, 3e3, length=gridpoints)
+Ts = range(1e2, 3e3, length=gridpoints)
 zetas = range(1e-3, 1 - 1e-3, length=3 * gridpoints)
-single_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
-double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
-@time @showprogress for (idx_T, T) in enumerate(T_arr)
+single_braid_fidelity = zeros(length(Ts), length(zetas))
+double_braid_fidelity = zero(single_braid_fidelity)
+@time @showprogress for (idx_T, T) in enumerate(Ts)
     Threads.@threads for (idx_z, ζ) in collect(enumerate(zetas))
         local_dict = Dict(
             :ζ => ζ,
@@ -128,14 +128,20 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         double_braid_gate = single_braid_gate^2
         single_braid_result = sol(T)
         double_braid_result = sol(2T)
-        single_braid_fidelity[idx_z, idx_T] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)
-        double_braid_fidelity[idx_z, idx_T] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
+        single_braid_fidelity[idx_T, idx_z] = gate_fidelity(proj * single_braid_gate * proj, proj * single_braid_result * proj)
+        double_braid_fidelity[idx_T, idx_z] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
     end
 end
 ## Makie.jl plots with heatmaps in a grid
+f = Figure(; size=(800, 400))
+ax1 = Axis(f[1, 1], xlabel="T", ylabel="ζ", title="Single braid fidelity")
+ax2 = Axis(f[1, 2], xlabel="T", ylabel="ζ", title="Double braid fidelity")
+hm1 = heatmap!(ax1, T_arr, zetas, single_braid_fidelity .^ 2, colorrange=(0, 1))
+hm2 = heatmap!(ax2, T_arr, zetas, double_braid_fidelity .^ 2, colorrange=(0, 1))
+f
 
-plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Single braid fidelity", clim=(0, 1)),
-    heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
+# plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Single braid fidelity", clim=(0, 1)),
+# heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 40
@@ -152,19 +158,19 @@ parities = zeros(Float64, length(zetas), length(parity_measurements))
 
 ideal_single_braid = majorana_exchange(-P[:L, :R])
 fermion_single_braid = majorana_exchange(-P[:L, :R]) * majorana_exchange(-P[:L̃, :R̃])
-gate_labels = ["ideal majorana", "kato", "ideal fermion", "fit"]
+gate_labels = ["ideal majorana", "kato", "ideal fermion", "fit", "lucky"]
 single_fidelities = zeros(Float64, gridpoints, length(gate_labels))
 double_fidelities = zeros(Float64, gridpoints, length(gate_labels))
-
+analytical_gates_fidelities = zeros(Float64, gridpoints)
 @time @showprogress @threads for (n, ζ) in collect(enumerate(zetas))
     local_dict = Dict(
         :ζ => ζ,
         :ϵs => (0, 0, 0),
-        :T => 2e4,
+        :T => 4e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
-        :Δmin => 1e-6 * [2, 1 / 3, 1],
-        :k => 1e1,
-        :steps => 5000,
+        :Δmin => 1e-10 * [2, 1 / 3, 1],
+        :k => 5e1,
+        :steps => 50,
         :correction => InterpolatedExactSimpleCorrection(),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
@@ -173,36 +179,51 @@ double_fidelities = zeros(Float64, gridpoints, length(gate_labels))
         :P => P,
         :inplace => inplace,
         :γ => γ,
-        :u0 => U0
+        :u0 => U0,
+        # :opt_kwargs => (; xatol=0, xrtol=0, atol=0, rtol=0, verbose=false)
+        :extra_shifts => [-0.05, 0, 0]
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
-    sol = solve(prob[:odeprob], Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
+    if n == 1
+        visualize_deltas(prob) |> display
+    end
+    #Tsit5()
+    sol = solve(prob[:odeprob], Vern7(), abstol=1e-10, reltol=1e-10, saveat=[0, T, 2T])
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
 
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     angles[n] = braid_gate_best_angle(single_braid_result, P)[1]
-    single_braid_gates = [ideal_single_braid, analytical_protocol_gate(prob), fermion_single_braid, MajoranaBraiding.single_braid_gate_fit(angles[n], P)]
+    single_braid_gates = [ideal_single_braid, MajoranaBraiding.single_braid_gate_kato(prob), fermion_single_braid, MajoranaBraiding.single_braid_gate_fit(angles[n], P), MajoranaBraiding.single_braid_gate_lucky_guess(prob)]
     double_braid_gates = [g^2 for g in single_braid_gates]
 
-    analytical_angle[n] = single_braid_gate_analytical_angle(prob)
+    # analytical_angle[n] = MajoranaBraiding.zero_energy_analytic_parameters(prob) #single_braid_gate_analytical_angle(prob)
     # fidelities[n] = braid_gate_best_angle(single_braid_result, P)[2]
     single_fidelities[n, :] .= [gate_fidelity(proj * target_gate * proj, proj * single_braid_result * proj) for target_gate in single_braid_gates]
     double_fidelities[n, :] .= [gate_fidelity(proj * target_gate * proj, proj * double_braid_result * proj) for target_gate in double_braid_gates]
     parities[n, :] = measure_parities(sol(2T) * u0, prob, parity_measurements)
-
+    analytical_gates_fidelities[n] = gate_fidelity(proj * double_braid_gates[2] * proj, proj * double_braid_gates[5] * proj)
+    # norm(I - double_braid_gates[2]' * double_braid_gates[2]) |> println
+    # norm(I - double_braid_gates[5]' * double_braid_gates[5]) |> println
+    norm(proj - (x -> x / sign(tr(x)))(proj * double_braid_gates[5]' * proj * double_braid_gates[2] * proj)) |> display
 end
+f, ax, pl = plot(1 .- double_fidelities[:, 2]; axis=(; yscale=log10));
+ylims!(1e-12, 1e-1);
+plot!(ax, 1 .- double_fidelities[:, 5]);
+f
+##
+plot(1 .- analytical_gates_fidelities)
 ## Make a makie grid layout with all fidelities
-let labels_fidelities = collect(zip(gate_labels, eachcol(single_fidelities), eachcol(double_fidelities)))[[1, 2, 3]]
+let labels_fidelities = collect(zip(gate_labels, eachcol(single_fidelities), eachcol(double_fidelities)))[[2, 5]]
     f = Figure(; size=(400, 300), fontsize=15)
     ax = Axis(f[1, 1], xlabel="ζ", ylabel="Fidelity")
-    ylims!(0 - 1e-3, 1 + 1e-3)
+    ylims!(0 - 1e-3, 1 + 1e-1)
     xlims!(0 - 1e-3, 1 + 1e-3)
     linewidth = 2
     kwargs = (; linewidth)
     for (i, (label, singles, doubles)) in enumerate(labels_fidelities)
-        lines!(ax, zetas .^ 1, singles; linestyle=:dash, label, color=Cycled(i), kwargs...)
+        # lines!(ax, zetas .^ 1, singles; linestyle=:dash, label, color=Cycled(i), kwargs...)
         lines!(ax, zetas .^ 1, doubles; label=label, color=Cycled(i), kwargs...)
     end
 
@@ -216,6 +237,7 @@ let labels_fidelities = collect(zip(gate_labels, eachcol(single_fidelities), eac
         ["Single", "Double", "Majorana", "Fermion"],
         tellwidth=false,
         position=:lb)
+    axislegend(ax; position=:lt)
     f
 end
 ## Same plot for parities 

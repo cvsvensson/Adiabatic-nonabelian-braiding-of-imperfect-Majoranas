@@ -23,10 +23,11 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 Majoranas = {url = "https://github.com/williamesamuelson/Majoranas.jl"}
 QuantumDots = {url = "https://github.com/cvsvensson/QuantumDots.jl"}
 
+
 [compat]
 Accessors = "0.1.38"
 CairoMakie = "0.12.15"
-QuantumDots = "0.9.6"
+QuantumDots = "0.11"
 UnPack = "1.0.2"
 julia = "1.10"
 

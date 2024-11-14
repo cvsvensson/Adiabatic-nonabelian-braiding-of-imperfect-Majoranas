@@ -9,20 +9,19 @@ function setup_correction(corr::InterpolatedExactSimpleCorrection, d::Dict)
     ts = d[:ts]
     return analytical_exact_simple_correction(ζ, ramp, ts, corr.totalparity)
 end
-function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1)
+function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1; opt_kwargs...)
     results = Float64[]
     for t in ts
         # Find roots of the energy split function
         initial = length(results) > 0 ? results[end] : 0.0
-        result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
+        result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
         push!(results, result)
     end
     return SimpleCorrection(linear_interpolation(ts, results, extrapolation_bc=Periodic()))
 end
 
-
-function find_zero_energy_from_analytics(ζ, ramp, t, initial=0.0, totalparity=1)
-    result = find_zero(x -> energy_splitting(x, ζ, ramp, t, totalparity), initial)
+function find_zero_energy_from_analytics(ζ, ramp, t, initial=0.0, totalparity=1; kwargs...)
+    result = find_zero(x -> energy_splitting(x, ζ, ramp, t, totalparity), initial; kwargs...)
     return result
 end
 
@@ -56,5 +55,5 @@ function analytic_parameters(x, ζ, ramp, t)
     θ_α = atan(H * tan(θ_μ) - Λ)
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
-    return H, Λ, μ, α, β, ν, θ_α, θ_μ
+    return (; H, Λ, μ, α, β, ν, θ_α, θ_μ)
 end

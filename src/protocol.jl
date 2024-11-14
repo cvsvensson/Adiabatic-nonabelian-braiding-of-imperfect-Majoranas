@@ -41,7 +41,7 @@ function setup_problem(dict)
     p = (ramp, ϵs, ζ, corr, P)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
     op = interpolate ? get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
-    prob = ODEProblem{inplace}(op, u0, tspan)
+    prob = ODEProblem{inplace}(op, u0, tspan, p)
     return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob)
 end
 

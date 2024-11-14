@@ -33,8 +33,8 @@ end
 visualize_parities(sol, dict::Dict, parities=default_parity_pairs) = visualize_parities(sol, dict[:P], dict[:T], parities)
 
 visualize_analytic_parameters(d::Dict) = visualize_analytic_parameters(d[:ζ], d[:ramp], d[:ts], d[:T], get(d, :totalparity, 1))
-function visualize_analytic_parameters(ζ, ramp, ts, T, totalparity)
-    component_array_over_time = stack(groundstate_components(find_zero_energy_from_analytics(ζ, ramp, t, totalparity), ζ^2, ramp, t) for t in ts)'
+function visualize_analytic_parameters(ζ, ramp, ts, T, totalparity; opt_kwargs...)
+    component_array_over_time = stack(zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...)[["μ" "α" "β" "ν"]] for t in ts)'
     component_labels = ["μ" "α" "β" "ν"]
     plot(ts / T, component_array_over_time, label=component_labels, xlabel="t / T", ylabel="Component", lw=2, frame=:box)
     plot!(legend=:topright)
