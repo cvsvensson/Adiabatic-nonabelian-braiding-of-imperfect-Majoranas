@@ -3,7 +3,7 @@ using QuantumDots
 using Majoranas
 using LinearAlgebra
 using Plots
-using OrdinaryDiffEq
+using OrdinaryDiffEqTsit5
 using ProgressMeter
 using StaticArrays
 using Base.Threads
@@ -47,10 +47,13 @@ plot(sol.t, [1 .- norm(sol(t)) for t in sol.t], label="norm error", xlabel="t")
 ##
 @majoranas γ
 Psym = Dict((l1, l2) => 1im * γ[l1] * γ[l2] for l1 in keys(γmb), l2 in keys(γmb))
+γbdg = MajoranaWrapper(FermionBdGBasis(1:3), collect(keys(γmb)))
+Pbdg = Dict((l1, l2) => 1im * γbdg[l1] * γbdg[l2] for l1 in keys(γmb), l2 in keys(γmb))
 ##
 t = prob[:T] / 2
 hamnum = MajoranaBraiding._ham_with_corrections(prob[:ramp], prob[:ϵs], prob[:ζ], prob[:correction], prob[:P], t)
 ham = MajoranaBraiding._ham_with_corrections(prob[:ramp], prob[:ϵs], prob[:ζ], prob[:correction], Psym, t)
+hambdg = MajoranaBraiding._ham_with_corrections(prob[:ramp], prob[:ϵs], prob[:ζ], prob[:correction], Pbdg, t)
 diagham = 1im * prod(diagonal_majoranas(γ, prob[:ramp], t, prob[:ζ]))
 hamnum2 = QuantumDots.eval_in_basis(ham, γmb)
 hamdiagnum = QuantumDots.eval_in_basis(diagham, γmb)
@@ -72,3 +75,6 @@ sort(diaghamdict, by=x -> map(f -> f.label, x.factors))
 
 ##
 parameters = MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(prob[:ζ], prob[:ramp], t, 0.0, 1), prob[:ζ], prob[:ramp], t)
+
+##
+(filter(x -> abs(x[2]) > 1e-3, (diagham*ham - ham*diagham).dict))

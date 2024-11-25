@@ -1,6 +1,5 @@
 module MajoranaBraiding
 using LinearAlgebra
-using OrdinaryDiffEq
 using StaticArrays
 using QuantumDots
 using Optim, Interpolations
@@ -9,6 +8,7 @@ using Roots
 using Majoranas
 using Plots
 using UnPack
+using OrdinaryDiffEqCore
 
 export MajoranaWrapper
 export RampProtocol
