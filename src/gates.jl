@@ -86,12 +86,11 @@ function analytical_gates(P, ζ, ramp, T, totalparity)
     ϕ_μ = π / 4 - θ_μ/2
     ϕ_α = θ_α/2
     U_12 = exp(+1im * ϕ_μ * P[1, 2] + 1im * ϕ_α * P[0, 4])
-    U_23 = exp(+1im * π / 4 * (μ^2 * P[2, 3] + β^2 * P[4, 5])
-               + 1im * 1 / 2 * μ * ν * (P[1, 3] - P[1, 2])
-               + 1im * 1 / 2 * α * β * (P[0, 5] - P[0, 4]))
+    U_23 = exp(+1im * π / 4 * (P[2, 3] + P[4, 5])) * exp(1im * π / 4 * ν*(μ*P[1, 3]-ν*P[2, 3] + 1im * π/4 * α*(β*P[0, 5] - α*P[4, 5])))
     U_31 = exp(-1im * ϕ_μ * P[1, 3] - 1im * ϕ_α * P[0, 5])
     return U_31, U_23, U_12
 end
+
 function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1)
     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity))
 end
