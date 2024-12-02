@@ -134,9 +134,9 @@ function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
 end
 
 
-diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], totalparity)
+diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], d[:T], totalparity)
 
-function diagonal_majoranas(γ, ramp, t, ζ, totalparity=1)
+function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
     (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     Δs = ramp(t)
