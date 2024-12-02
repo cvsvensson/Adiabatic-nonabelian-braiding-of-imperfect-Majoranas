@@ -245,11 +245,15 @@ let xscale = :identity, zetas = zetas, single_braid_fidelity = single_braid_idea
 end
 
 ## Compare hamiltonian from M to the one from the diagonal_majoranas function at some time
-
+sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6)
 maj_hams1 = [1im * prod(diagonal_majoranas(prob, t))[5:8, 5:8] for t in prob[:ts]]
 maj_hams2 = [1im * prod(diagonal_majoranas(prob, t))[1:4, 1:4] for t in prob[:ts]]
+P1 = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
+P2 = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] for t in prob[:ts]] / 2
 hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]
 projs = [eigen(Matrix(1im * ham)).vectors[:, 1:2] for ham in hams]
+projs = [p * p' for p in projs]
+pars = [sol(t)'*(1im*prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8]*sol(t)) for t in prob[:ts]]
 
 [abs(tr(P[:M, :L] * h)) for h in hams] |> plot
 [abs(tr(P[:M, :L] * h)) for h in maj_hams1] |> plot!
@@ -258,3 +262,7 @@ projs = [eigen(Matrix(1im * ham)).vectors[:, 1:2] for ham in hams]
 [abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, hams)] |> plot
 [abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, maj_hams1)] |> plot!
 [abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, maj_hams2)] |> plot!
+
+##
+[norm(p0 - p1) for (p0, p1) in zip(projs, P1)] |> plot
+[norm(p0 - p1) for (p0, p1) in zip(projs, P2)] |> plot!
