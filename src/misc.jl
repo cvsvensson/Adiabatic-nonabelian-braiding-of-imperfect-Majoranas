@@ -8,10 +8,6 @@ function drho!(du, u, (p, Hcache), t)
     return du
 end
 
-function parity_operators(γ::MajoranaWrapper, transform=Matrix)
-    Dict([(k1, k2) => transform(1.0im * γ[k1] * γ[k2]) for k1 in keys(γ.majoranas), k2 in keys(γ.majoranas)])
-end
-
 function matrix_vec_types(use_static_arrays, inplace, N)
     if use_static_arrays && inplace
         return MMatrix{2^(N - 1),2^(N - 1)}, MVector{2^(N - 1)}
