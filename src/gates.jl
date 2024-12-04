@@ -177,6 +177,6 @@ function braid_gate_prediction(gate, ω, P)
 end
 
 function braid_gate_best_angle(gate, P)
-    ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P), 0.0, π / 2).minimizer
+    ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P), 0.0, π).minimizer
     return ω, braid_gate_prediction(gate, ω, P)
 end
