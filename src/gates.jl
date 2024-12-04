@@ -139,7 +139,7 @@ diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ra
 function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
     (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
-    Δs = ramp(t)
+    Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ_23 = √(Δs[2]^2 + Δs[3]^2)
     θ_23 = atan(Δ_23, Δs[1])

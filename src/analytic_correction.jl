@@ -43,7 +43,7 @@ end
 Calculate some useful numbers related to exactly diagonalizing the system
 """
 function analytic_parameters(x, ζ, ramp, t)
-    Δs = ramp(t)
+    Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     ρ = Δ23 / Δ
