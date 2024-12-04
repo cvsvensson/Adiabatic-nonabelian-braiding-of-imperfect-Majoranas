@@ -29,31 +29,52 @@ end
     energy_splitting(x, ζ, ramp, t, totalparity=1)
 
 Calculate (analytically) the energy splitting between the two lowest energy levels of the system. Works only when all ζs are the same?
+Yes it works only when all ζs are the same.
 """
 function energy_splitting(x, ζ, ramp, t, totalparity=1)
     (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(x, ζ, ramp, t)
-
-    Δϵ = β * ν + H * μ * α + Λ * α * ν + x * sign(totalparity)
+  
+    Δϵ = β * ν - Η * μ * α + Λ * α * ν + x * sign(totalparity)
     return Δϵ
 end
 
 """
     analytic_parameters(x, ζ, ramp, t)
 
-Calculate some useful numbers related to exactly diagonalizing the system
+Calculate the energy parameters Η and Λ for the system.
+Λ (capital λ) and Η (capital η) are the generalizations of λ and η for Δ_1 > 0.
+In the limit Δ_1 = 0, Λ = λ and Η = η.
 """
 function analytic_parameters(x, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     ρ = Δ23 / Δ
-    η = -ζ^2
+    η = ζ^2
 
-    H = η * ρ^2 + x * √(1 - ρ^2)
-    Λ = ρ * (x - √(1 - ρ^2) * η)
+    Η = η * ρ^2 - x * √(1 - ρ^2)
+    Λ = ρ * x + ρ * √(1 - ρ^2) * η
     θ_μ = -1 / 2 * atan(2 * Λ * H, 1 + Λ^2 - H^2)
     θ_α = atan(H * tan(θ_μ) - Λ)
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
     return (; H, Λ, μ, α, β, ν, θ_α, θ_μ)
+end
+
+"""
+    groundstate_components(x, ζ, ramp, t)
+
+Calculate the components ???
+"""
+function groundstate_components(x, ζ, ramp, t)
+    Η, Λ = energy_parameters(x, ζ, ramp, t)
+
+    θ_μ = 1 / 2 * atan(2 * Λ * Η, 1 + Λ^2 - Η^2)
+    μ = cos(θ_μ)
+    ν = sin(θ_μ)
+
+    θ_α = -atan(Η * tan(θ_μ) + Λ)
+    α = cos(θ_α)
+    β = sin(θ_α)
+    return μ, α, β, ν
 end

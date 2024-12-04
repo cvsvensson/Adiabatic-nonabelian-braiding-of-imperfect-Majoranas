@@ -25,9 +25,9 @@ U0 = mtype(Matrix{ComplexF64}(I, size(u0, 1), size(u0, 1)))
 param_dict = Dict(
     :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
     :ϵs => (0, 0, 0), #Dot energy levels
-    :T => 2e3, #Maximum time
+    :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
-    :Δmin => 1e-6 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+    :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
     :k => 1e1, #Determines the slope of the ramp
     :steps => 2000, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
@@ -182,11 +182,11 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :ζ => tan(omega),
         :ϵs => (0, 0, 0),
-        :T => 2e3,
+        :T => 3e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
-        :Δmin => 1e-6 * [2, 1 / 3, 1],
+        :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
-        :steps => 2000,
+        :steps => 4000,
         :correction => InterpolatedExactSimpleCorrection(),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
@@ -216,7 +216,8 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     double_braid_ideal_fidelity[idx] = gate_fidelity(proj * double_braid_gate_ideal * proj, proj * double_braid_result * proj)
     double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_result * proj)
 
-    fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
+    analytical_fidelity[idx] = analytical_gate_fidelity(prob.dict)
+    fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
 plot(omegas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ω", lw=2, frame=:box)
@@ -266,3 +267,56 @@ pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(
 ##
 [norm(p0 - p1) for (p0, p1) in zip(projs, P1)] |> plot
 [norm(p0 - p1) for (p0, p1) in zip(projs, P2)] |> plot!
+##
+[abs(tr(P[0, 1] * h)) for h in hams] |> plot
+[abs(tr(P[0, 2] * h)) for h in hams] |> plot!
+[abs(tr(P[0, 3] * h)) for h in hams] |> plot!
+[abs(tr(P[0, 3] * h)) for h in maj_hams1] |> plot!
+[abs(tr(P[0, 2] * h)) for h in maj_hams1] |> plot!
+
+## Do a sweep over zetas and plot the groundstate_components
+
+zetas = range(1e-6, 1, length=100)
+component_array = zeros(Float64, length(zetas), 4) 
+for (idx, ζ) in collect(enumerate(zetas))
+    local_dict = Dict(
+        :ζ => ζ,
+        :ϵs => (0, 0, 0),
+        :T => 1e4,
+        :Δmax => 1 * [1 / 3, 1 / 2, 1],
+        :Δmin => 1e-10 * [2, 1 / 3, 1],
+        :k => 2e1,
+        :steps => 4000,
+        :correction => InterpolatedExactSimpleCorrection(),
+        :interpolate_corrected_hamiltonian => false,
+        :P => P,
+        :inplace => inplace,
+        :γ => γ,
+        :u0 => U0
+    )
+    prob = setup_problem(local_dict)
+    components = groundstate_components(find_zero_energy_from_analytics(ζ, prob.dict[:ramp], prob.dict[:ts][end]/4, totalparity), ζ^2, prob.dict[:ramp], 1*prob.dict[:ts][end]/4)
+    component_array[idx, :] .= components
+end
+# plot α/μ and ν/β as a log vs η
+ηs = zetas.^2
+plot(ηs, (component_array[:, 2] ./ component_array[:, 1]), label="α/μ", xlabel="η", ylabel="λ/η", lw=2, frame=:box)
+
+function guess(η)
+    b = -(√2 - 0.5)/(√2 -1)
+    println(b)
+    e = b - 1/2
+    println(e)
+    return cos(atan(η) )
+    return (1+ b*η^2)/(1 + e*η^2)
+end
+
+function eta_von_x(x)
+    u = 2 * (1+x^2)/(2+ x^2)
+    numerator = 2 - x^2*u
+    denominator = x^2 * u * (√(u) + x)^2
+    return tan(acos(x))
+end
+x_array = range(1/√2, 1, length=100)
+η_array = [eta_von_x(x) for x in x_array]
+plot!(η_array, x_array, label="analytics", lw=2, frame=:box)

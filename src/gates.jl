@@ -43,6 +43,8 @@ function gate_overlaps(gate, gates::Dict)
 end
 
 gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
+# Can you write the above function using trace, * and dagger?
+#gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2)))
 
 @testitem "majorana_exchange" begin
     using LinearAlgebra, QuantumDots
@@ -86,6 +88,7 @@ single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     exp(1im * π / 4 * (α * P[:L, :R] + ν * P[:L̃, :R̃]))
+
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
@@ -106,6 +109,11 @@ function zero_energy_analytic_parameters(ζ, ramp, T, totalparity=1; opt_kwargs.
     initial = 0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
     return analytic_parameters(result, ζ, ramp, t)
+
+analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
+function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1)
+    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
+    return cos(π / 4 * (1 - α + ν))^2
 end
 
 single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
@@ -118,10 +126,8 @@ function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
 end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
-    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    # α = cos(θ_α)^1
-    # ν = sin(θ_μ)^1
-    return π / 4 * (α - ν)
+   α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
+   return π / 4 * ((1 - ν) -totalparity * (1 - α) )
 end
 
 
@@ -131,6 +137,7 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
     (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
+
     Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ_23 = √(Δs[2]^2 + Δs[3]^2)
     θ_23 = atan(Δ_23, Δs[1])
