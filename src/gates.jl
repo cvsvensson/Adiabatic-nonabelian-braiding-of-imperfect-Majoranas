@@ -168,15 +168,15 @@ function single_braid_gate_fit(ω, P)
     return exp(1im * ω * P[:L, :R])
 end
 
-function braid_gate_prediction(gate, ω, P)
+function braid_gate_prediction(gate, ω, P, proj)
     prediction = single_braid_gate_fit(ω, P)
 
-    proj = Diagonal([0, 1, 1, 0])
+    # proj = Diagonal([0, 1, 1, 0])
     single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)
     return single_braid_fidelity
 end
 
-function braid_gate_best_angle(gate, P)
-    ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P), 0.0, π).minimizer
-    return ω, braid_gate_prediction(gate, ω, P)
+function braid_gate_best_angle(gate, P, proj)
+    ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P, proj), 0.0, π).minimizer
+    return ω, braid_gate_prediction(gate, ω, P, proj)
 end
