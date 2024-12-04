@@ -109,9 +109,10 @@ function zero_energy_analytic_parameters(ζ, ramp, T, totalparity=1; opt_kwargs.
     initial = 0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
     return analytic_parameters(result, ζ, ramp, t)
+end
 
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1)
+function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     return cos(π / 4 * (1 - α + ν))^2
 end
@@ -126,8 +127,8 @@ function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
 end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
-   α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-   return π / 4 * ((1 - ν) -totalparity * (1 - α) )
+    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
+    return π / 4 * ((1 - ν) - totalparity * (1 - α))
 end
 
 

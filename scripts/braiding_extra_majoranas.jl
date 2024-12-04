@@ -72,7 +72,7 @@ braid_gate_prediction(single_braid_gate, single_braid_gate_analytical_angle(prob
 omegas = range(0, pi / 2, 50) #range(0, 2, length=50)
 parity_measurements = [(:L, :L̃), (:M, :M̃), (:R, :R̃)]
 parity_labels = MajoranaBraiding.parity_labels(parity_measurements)
-parities_arr = zeros(ComplexF64, length(zetas), length(parity_measurements))
+parities_arr = zeros(ComplexF64, length(omegas), length(parity_measurements))
 @time @showprogress @threads for (idx, omega) in collect(enumerate(omegas))
     local_dict = Dict(
         :ζ => tan(omega),
@@ -168,14 +168,17 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 100
-omegas = range(0, pi / 2, gridpoints) #range(0, 1, length=gridpoints)
+gridpoints = 50
+omegas = range(0, pi / 2 - 0.01, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_ideal_fidelity = zeros(Float64, gridpoints)
+single_braid_lucky_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_ideal_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
+double_braid_lucky_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
 analytical_angles = zeros(Float64, gridpoints)
+analytical_fidelity = zeros(Float64, gridpoints)
 fidelities = zeros(Float64, gridpoints)
 fidelity_numerics_analytic = zeros(Float64, gridpoints)
 @time @showprogress @threads for (idx, omega) in collect(enumerate(omegas))
@@ -202,10 +205,11 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     sol = solve(prob[:odeprob], Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     single_braid_gate_ideal = majorana_exchange(-P[:L, :R])
-    analytical_protocol_gate_ = single_braid_gate_lucky_guess(prob)
+    single_braid_lucky_guess = single_braid_gate_lucky_guess(prob)
     analytical_protocol_gate_ = single_braid_gate_kato(prob)
     double_braid_gate_ideal = single_braid_gate_ideal^2
     double_braid_gate_kato = analytical_protocol_gate_^2
+    double_braid_lucky_guess = single_braid_lucky_guess^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
@@ -213,18 +217,25 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     fidelities[idx] = braid_gate_best_angle(single_braid_result, P)[2]
     single_braid_ideal_fidelity[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * single_braid_result * proj)
     single_braid_kato_fidelity[idx] = gate_fidelity(proj * analytical_protocol_gate_ * proj, proj * single_braid_result * proj)
+    single_braid_lucky_fidelity[idx] = gate_fidelity(proj * single_braid_lucky_guess * proj, proj * single_braid_result * proj)
     double_braid_ideal_fidelity[idx] = gate_fidelity(proj * double_braid_gate_ideal * proj, proj * double_braid_result * proj)
     double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_result * proj)
+    double_braid_lucky_fidelity[idx] = gate_fidelity(proj * double_braid_lucky_guess * proj, proj * double_braid_result * proj)
 
-    analytical_fidelity[idx] = analytical_gate_fidelity(prob.dict)
+    analytical_fidelity[idx] = analytical_gate_fidelity(prob)
     fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
-plot(omegas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ω", lw=2, frame=:box)
-plot!(omegas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2, frame=:box)
-plot!(omegas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2, frame=:box)
-plot!(omegas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2, frame=:box)
-plot!(omegas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ω", lw=2, frame=:box)
+plot(; xlabel="ω", lw=2, frame=:box)
+# plot!(omegas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ω", lw=2)
+# plot!(omegas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2)
+plot!(omegas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
+plot!(omegas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
+plot!(omegas, analytical_fidelity, label="analytical_fidelity", lw=2)
+plot!(omegas, fidelity_numerics_analytic, label="fidelity_numerics_analytic", lw=2)
+plot!(omegas, single_braid_lucky_fidelity, label="single_braid_lucky_fidelity", lw=2)
+plot!(omegas, double_braid_lucky_fidelity, label="double_braid_lucky_fidelity", lw=2)
+# plot!(omegas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ω", lw=2, frame=:box)
 ## plot angles 
 plot(omegas, angles, label="angles", xlabel="ζ", lw=2, frame=:box)
 plot!(omegas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
@@ -277,7 +288,7 @@ pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(
 ## Do a sweep over zetas and plot the groundstate_components
 
 zetas = range(1e-6, 1, length=100)
-component_array = zeros(Float64, length(zetas), 4) 
+component_array = []
 for (idx, ζ) in collect(enumerate(zetas))
     local_dict = Dict(
         :ζ => ζ,
@@ -295,28 +306,27 @@ for (idx, ζ) in collect(enumerate(zetas))
         :u0 => U0
     )
     prob = setup_problem(local_dict)
-    components = groundstate_components(find_zero_energy_from_analytics(ζ, prob.dict[:ramp], prob.dict[:ts][end]/4, totalparity), ζ^2, prob.dict[:ramp], 1*prob.dict[:ts][end]/4)
-    component_array[idx, :] .= components
+    push!(component_array, MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(ζ, prob[:ramp], prob[:ts][end] / 4, totalparity), ζ^2, prob[:ramp], 1 * prob[:ts][end] / 4))
 end
-# plot α/μ and ν/β as a log vs η
-ηs = zetas.^2
-plot(ηs, (component_array[:, 2] ./ component_array[:, 1]), label="α/μ", xlabel="η", ylabel="λ/η", lw=2, frame=:box)
+## plot α/μ and ν/β as a log vs η
+ηs = zetas .^ 2
+plot(ηs, map(c -> c[:α] / c[:μ], component_array), label="α/μ", xlabel="η", ylabel="λ/η", lw=2, frame=:box)
 
 function guess(η)
-    b = -(√2 - 0.5)/(√2 -1)
+    b = -(√2 - 0.5) / (√2 - 1)
     println(b)
-    e = b - 1/2
+    e = b - 1 / 2
     println(e)
-    return cos(atan(η) )
-    return (1+ b*η^2)/(1 + e*η^2)
+    return cos(atan(η))
+    return (1 + b * η^2) / (1 + e * η^2)
 end
 
 function eta_von_x(x)
-    u = 2 * (1+x^2)/(2+ x^2)
-    numerator = 2 - x^2*u
+    u = 2 * (1 + x^2) / (2 + x^2)
+    numerator = 2 - x^2 * u
     denominator = x^2 * u * (√(u) + x)^2
     return tan(acos(x))
 end
-x_array = range(1/√2, 1, length=100)
+x_array = range(1 / √2, 1, length=100)
 η_array = [eta_von_x(x) for x in x_array]
 plot!(η_array, x_array, label="analytics", lw=2, frame=:box)
