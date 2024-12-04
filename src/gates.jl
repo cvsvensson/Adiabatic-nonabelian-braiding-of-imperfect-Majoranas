@@ -85,28 +85,19 @@ end
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    # α = cos(θ_α)
-    # ν = sin(θ_μ)
-    # U = exp(1im * π / 4 * ((1 - α) * P[:L, :R] + totalparity * (1 + ν) * P[:L̃, :R̃]))
     exp(1im * π / 4 * (α * P[:L, :R] + ν * P[:L̃, :R̃]))
-    # return U
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     ϕ_μ = π / 4 - θ_μ / 2
     ϕ_α = θ_α / 2
-    # U_12 = exp(1im * ϕ_μ * P[1, 2] + 1im * ϕ_α * P[0, 4])
-    # U_23 = exp(1im * π / 4 * (μ^2 * P[2, 3] + β^2 * P[4, 5])
-    #            + 1im * 1 / 2 * μ * ν * (P[1, 3] - P[1, 2])
-    #            + 1im * 1 / 2 * α * β * (P[0, 5] - P[0, 4]))
-    # U_31 = exp(-1im * ϕ_μ * P[1, 3] - 1im * ϕ_α * P[0, 5])
-    # label_replacements = [0 => :M, 1 => :M̃, 2=>:L, 3=>:R, 4=>:L̃, 5=>:R̃]
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
-    U_23 = exp(1im * π / 4 * (μ^2 * P[:L, :R] + β^2 * P[:L̃, :R̃])
-               + 1im * 1 / 2 * μ * ν * (P[:M̃, :R] - P[:M̃, :L])
-               + 1im * 1 / 2 * α * β * (P[:M, :R̃] - P[:M, :L̃]))
+    U_23 = exp(1im * π / 4 * (P[:L, :R] + P[:L̃, :R̃])) * exp(1im * π / 4 * ν * (μ * P[:M̃, :R] - ν * P[:L, :R] + 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃])))
+    # U_23 = exp(+1im * π / 4 * (P[2, 3] + P[4, 5])) * exp(1im * π / 4 * ν * (μ * P[1, 3] - ν * P[2, 3] + 1im * π / 4 * α * (β * P[0, 5] - α * P[4, 5])))
+    # label_replacements = [0 => :M, 1 => :M̃, 2=>:L, 3=>:R, 4=>:L̃, 5=>:R̃]
     U_31 = exp(-1im * ϕ_μ * P[:M̃, :R] - 1im * ϕ_α * P[:M, :R̃])
     return U_31, U_23, U_12
+
 end
 
 zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)

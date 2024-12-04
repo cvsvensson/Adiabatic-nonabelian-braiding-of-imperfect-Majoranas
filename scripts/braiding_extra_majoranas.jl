@@ -169,7 +169,7 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 100
-omegas = range(0, pi/2, gridpoints) #range(0, 1, length=gridpoints)
+omegas = range(0, pi / 2, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_ideal_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_ideal_fidelity = zeros(Float64, gridpoints)
@@ -203,6 +203,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     single_braid_gate_ideal = majorana_exchange(-P[:L, :R])
     analytical_protocol_gate_ = single_braid_gate_lucky_guess(prob)
+    analytical_protocol_gate_ = single_braid_gate_kato(prob)
     double_braid_gate_ideal = single_braid_gate_ideal^2
     double_braid_gate_kato = analytical_protocol_gate_^2
     single_braid_result = sol(T)
