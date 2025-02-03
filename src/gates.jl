@@ -159,6 +159,30 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     γ1 = α * γ[:M] + β * γ_η
     γ2 = μ * γ_ϕ + ν * γ[:M̃]
     γ2 = μ * γ_θ + ν * γ_Θ_disc    # Generalization of γ2 for Δ_1 > 0
+
+    # Sectionwise definition of the diagonal Majoranas
+    if 0 <= t % T < T / 3
+        γ_1 = γ[:M]
+        γ_η = γ[:L̃]
+        γ_Δ = ρ1 * γ[:M̃] + ρ2 * γ[:L]
+        γ_Δ_disc = ρ1 * γ[:L] - ρ2 * γ[:M̃]
+        γ1 = α * γ_1 + β * γ_η
+        γ2 = μ * γ_Δ + ν * γ_Δ_disc
+    elseif T / 3 <= t % T < 2 * T / 3
+        γ_1 = γ[:M]
+        γ_η = ρ2 * γ[:L̃] + ρ3 * γ[:R̃]
+        γ_1̃ = γ[:M̃]
+        γ_Δ = ρ2 * γ[:L] + ρ3 * γ[:R]
+        γ1 = α * γ_1 + β * γ_η
+        γ2 = μ * γ_Δ + ν * γ_1̃
+    else
+        γ_1 = γ[:M]
+        γ_η = γ[:R̃]
+        γ_Δ = ρ1 * γ[:M̃] + ρ3 * γ[:R]
+        γ_Δ_disc = ρ1 * γ[:R] - ρ3 * γ[:M̃]
+        γ1 = α * γ_1 + β * γ_η
+        γ2 = μ * γ_Δ + ν * γ_Δ_disc
+    end
     return γ1, γ2, Δtot
 
 end
