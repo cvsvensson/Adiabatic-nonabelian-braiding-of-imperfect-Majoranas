@@ -11,7 +11,7 @@ using Accessors
 ##
 γ = get_majorana_basis()
 N = length(γ.fermion_basis)
-totalparity = 1
+totalparity = -1
 use_static_arrays = true
 inplace = !use_static_arrays
 mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
@@ -23,14 +23,14 @@ U0 = mtype(Matrix{ComplexF64}(I, size(u0, 1), size(u0, 1)))
 
 ##
 param_dict = Dict(
-    :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
+    :ζ => 0.2, #Majorana overlaps. Number or triplet of numbers
     :ϵs => (0, 0, 0), #Dot energy levels
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
     :k => 1e1, #Determines the slope of the ramp
     :steps => 2000, #Number of timesteps for interpolations
-    :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+    :correction => InterpolatedExactSimpleCorrection(totalparity), #Different corrections are available. This is the most relevant one for the paper
     :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
     :P => P, #Dict with parity operators
     :inplace => inplace, #Does the hamiltonian act in place? I'm not sure this works anymore
@@ -64,14 +64,11 @@ println("Single braid fidelity: ", single_braid_fidelity)
 double_braid_fidelity = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
 println("Double braid fidelity: ", double_braid_fidelity)
 
-println("Fit of angle for braid gate: ", braid_gate_best_angle(single_braid_gate, P))
-
-braid_gate_prediction(single_braid_gate, single_braid_gate_analytical_angle(prob_full), P)
 ##
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
 omegas = range(0, pi / 2, 50) #range(0, 2, length=50)
 parity_measurements = [(:L, :L̃), (:M, :M̃), (:R, :R̃)]
-parity_labels = MajoranaBraiding.parity_labels(parity_measurements)
+#parity_labels = MajoranaBraiding.parity_labels(parity_measurements)
 parities_arr = zeros(ComplexF64, length(omegas), length(parity_measurements))
 @time @showprogress @threads for (idx, omega) in collect(enumerate(omegas))
     local_dict = Dict(
@@ -231,7 +228,7 @@ plot(; xlabel="ω", lw=2, frame=:box)
 # plot!(omegas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2)
 plot!(omegas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
 plot!(omegas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
-plot!(omegas, analytical_fidelity, label="analytical majorana similarity", lw=2)
+plot(omegas, analytical_fidelity, label="analytical majorana similarity", lw=2)
 # plot!(omegas, fidelity_numerics_analytic, label="fidelity_numerics_analytic", lw=2)
 plot!(omegas, single_braid_lucky_fidelity, label="single_braid_lucky_fidelity", lw=2)
 plot!(omegas, double_braid_lucky_fidelity, label="double_braid_lucky_fidelity", lw=2)
@@ -260,13 +257,24 @@ end
 sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6)
 maj_hams1 = [1im * prod(diagonal_majoranas(prob, t))[5:8, 5:8] for t in prob[:ts]]
 maj_hams2 = [1im * prod(diagonal_majoranas(prob, t))[1:4, 1:4] for t in prob[:ts]]
-P1 = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
+P1 = [I - 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
 P2 = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] for t in prob[:ts]] / 2
 hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]
 projs = [eigen(Matrix(1im * ham)).vectors[:, 1:2] for ham in hams]
 projs = [p * p' for p in projs]
-pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(t)) for t in prob[:ts]]
 
+if totalparity == 1
+    pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(t)) for t in prob[:ts]]
+    P = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
+else
+    pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] * sol(t)) for t in prob[:ts]]
+    P = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] for t in prob[:ts]] / 2
+end
+# Plot pars
+real(pars) |> plot
+##
+[norm(p0 - p1) for (p0, p1) in zip(projs, P)] |> plot
+##
 [abs(tr(P[:M, :L] * h)) for h in hams] |> plot
 [abs(tr(P[:M, :L] * h)) for h in maj_hams1] |> plot!
 [abs(tr(P[:M, :L] * h)) for h in maj_hams2] |> plot!
@@ -276,8 +284,6 @@ pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(
 [abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, maj_hams2)] |> plot!
 
 ##
-[norm(p0 - p1) for (p0, p1) in zip(projs, P1)] |> plot
-[norm(p0 - p1) for (p0, p1) in zip(projs, P2)] |> plot!
 ##
 [abs(tr(P[0, 1] * h)) for h in hams] |> plot
 [abs(tr(P[0, 2] * h)) for h in hams] |> plot!

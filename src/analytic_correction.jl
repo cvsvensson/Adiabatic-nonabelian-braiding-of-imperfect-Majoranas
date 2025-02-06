@@ -32,10 +32,9 @@ Calculate (analytically) the energy splitting between the two lowest energy leve
 Yes it works only when all ζs are the same.
 """
 function energy_splitting(x, ζ, ramp, t, totalparity=1)
-    (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(x, ζ, ramp, t)
+    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(x, ζ, ramp, t)
 
-    Δϵ = β * ν - H * μ * α + Λ * α * ν + x * sign(totalparity)
-    # Δϵ = β * ν + H * μ * α + Λ * α * ν + x * sign(totalparity)
+    Δϵ = β * ν + η_gen * μ * α + λ_gen * α * ν - x * totalparity
     return Δϵ
 end
 
@@ -50,20 +49,15 @@ function analytic_parameters(x, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    ρ = Δ23 / Δ
+    θ_spherical = atan(Δ23, Δs[1])
 
     η = ζ^2
-    H = η * ρ^2 - x * √(1 - ρ^2)
-    Λ = ρ * x + ρ * √(1 - ρ^2) * η
-    θ_μ = 1 / 2 * atan(2 * Λ * H, 1 + Λ^2 - H^2)
-    θ_α = -atan(H * tan(θ_μ) + Λ)
-    # η = -ζ^2
-    # H = η * ρ^2 + x * √(1 - ρ^2)
-    # Λ = ρ * (x - √(1 - ρ^2) * η)
-    # θ_μ = -1 / 2 * atan(2 * Λ * H, 1 + Λ^2 - H^2)
-    # θ_α = atan(H * tan(θ_μ) - Λ)
+    η_gen = η * sin(θ_spherical)^2 - x * cos(θ_spherical)
+    λ_gen = sin(θ_spherical) * x + cos(θ_spherical) * sin(θ_spherical) * η
+    θ_μ = -1 / 2 * atan(2 * λ_gen * η_gen, 1 + λ_gen^2 - η_gen^2)
+    θ_α = atan(η_gen * tan(θ_μ) - λ_gen)
 
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
-    return (; H, Λ, μ, α, β, ν, θ_α, θ_μ)
+    return (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ)
 end

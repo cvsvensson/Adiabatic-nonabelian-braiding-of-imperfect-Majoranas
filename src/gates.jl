@@ -87,12 +87,11 @@ end
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    exp(1im * π / 4 * (α * P[:L, :R] + ν * P[:L̃, :R̃]))
-
+    return exp(π / 4 * (1 - α) * 1im * P[:L, :R]) * exp(π / 4 * (1 - ν) * 1im * P[:L̃, :R̃])
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    ϕ_μ = π / 4 - θ_μ / 2
+    ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
     U_23 = exp(1im * π / 4 * (P[:L, :R] + P[:L̃, :R̃])) * exp(1im * π / 4 * ν * (μ * P[:M̃, :R] - ν * P[:L, :R]) + 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃]))
@@ -122,7 +121,7 @@ function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
     t = T / 2
     initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
-    (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
+    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     return α, ν
 end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
@@ -136,7 +135,7 @@ diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ra
 
 function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
-    (; H, Λ, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
+    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
 
     Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
@@ -148,18 +147,18 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     ρ2 = sin(θ_23) * cos(ϕ_23)
     ρ3 = sin(θ_23) * sin(ϕ_23)
 
-    Δtot *= α * μ - H * β * ν - Λ * β * μ
+    Δtot *= α * μ - η_gen * β * ν - λ_gen * β * μ
 
     γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
     γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
     γ_θ = cos(θ_23) * γ[:M̃] + sin(θ_23) * γ_ϕ
-    γ_Θ_disc = cos(θ_23) * γ_ϕ - sin(θ_23) * γ[:M̃]
+    γ_Θ_disc = - sin(θ_23) * γ[:M̃] + cos(θ_23) * γ_ϕ 
     # old_labels_to_new = Dict(zip(0:5, [:M, :M̃, :L, :R, :L̃, :R̃]))
 
     γ1 = α * γ[:M] + β * γ_η
-    γ2 = μ * γ_ϕ + ν * γ[:M̃]
-    γ2 = μ * γ_θ + ν * γ_Θ_disc    # Generalization of γ2 for Δ_1 > 0
+    γ2 = μ * γ_θ + ν * γ_Θ_disc
 
+    return γ1, γ2, Δtot
     # Sectionwise definition of the diagonal Majoranas
     if 0 <= t % T < T / 3
         γ_1 = γ[:M]
@@ -183,7 +182,6 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
         γ1 = α * γ_1 + β * γ_η
         γ2 = μ * γ_Δ + ν * γ_Δ_disc
     end
-    return γ1, γ2, Δtot
 
 end
 
