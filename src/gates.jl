@@ -87,14 +87,14 @@ end
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    return exp(π / 4 * (1 - α) * 1im * P[:L, :R]) * exp(π / 4 * (1 - ν) * 1im * P[:L̃, :R̃])
+    return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
-    U_23 = exp(1im * π / 4 * (P[:L, :R] + P[:L̃, :R̃])) * exp(1im * π / 4 * ν * (μ * P[:M̃, :R] - ν * P[:L, :R]) + 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃]))
+    U_23 = exp(1im * π / 4 * (P[:L, :R] + P[:L̃, :R̃])) * exp(-1im * π / 4 * ν * (μ * P[:M̃, :R] + ν * P[:L, :R]) + 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃]))
     # U_23 = exp(+1im * π / 4 * (P[2, 3] + P[4, 5])) * exp(1im * π / 4 * ν * (μ * P[1, 3] - ν * P[2, 3]) + 1im * π / 4 * α * (β * P[0, 5] - α * P[4, 5]))
     # label_replacements = [0 => :M, 1 => :M̃, 2=>:L, 3=>:R, 4=>:L̃, 5=>:R̃]
     U_31 = exp(-1im * ϕ_μ * P[:M̃, :R] - 1im * ϕ_α * P[:M, :R̃])
@@ -113,7 +113,7 @@ end
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    return cos(π / 4 * (1 - α + ν))^2
+    return cos(π / 4 * (1 - α - ν))^2
 end
 
 single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
@@ -127,7 +127,7 @@ end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
     α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    return π / 4 * ((1 - ν) - totalparity * (1 - α))
+    return π / 4 * ((1 + ν) - totalparity * (1 - α))
 end
 
 
@@ -147,7 +147,7 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
     ρ2 = sin(θ_23) * cos(ϕ_23)
     ρ3 = sin(θ_23) * sin(ϕ_23)
 
-    Δtot *= α * μ - η_gen * β * ν - λ_gen * β * μ
+    Δtot *= α * μ + η_gen * β * ν - λ_gen * β * μ
 
     γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
     γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
