@@ -68,7 +68,7 @@ println("Double braid fidelity: ", double_braid_fidelity)
 # Do a sweep over several zetas, solve the system for the final time t=2T and measure the parities
 omegas = range(0, pi / 2, 50) #range(0, 2, length=50)
 parity_measurements = [(:L, :L̃), (:M, :M̃), (:R, :R̃)]
-#parity_labels = MajoranaBraiding.parity_labels(parity_measurements)
+parity_labels = MajoranaBraiding.parity_labels(parity_measurements)
 parities_arr = zeros(ComplexF64, length(omegas), length(parity_measurements))
 @time @showprogress @threads for (idx, omega) in collect(enumerate(omegas))
     local_dict = Dict(

@@ -21,7 +21,7 @@ function parity_operators(γ::SingleParticleMajoranaBasis, parity, mtype)
     Pnew = ProjectedHamiltonianBasis(γ, parity)
     transformed_matrices = map(mtype, values(Pnew.dict))
     newdict = Majoranas.OrderedDict(zip(keys(Pnew.dict), transformed_matrices))
-    return HamiltonianBasis(newdict, γ.fermion_basis)
+    return HamiltonianBasis(newdict, γ.fermion_basis, Pnew.basis_norm)
 end
 
 function remove_from_basis(remove_labels, basis)
