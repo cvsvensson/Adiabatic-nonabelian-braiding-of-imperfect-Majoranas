@@ -79,16 +79,16 @@ end
 #     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
 #     return exp(1im * π / 4 * ((1 - α) * P[:L, :R] - (1 - ν) * P[:L̃, :R̃]))
 # end
-single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-    foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
-end
+# single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
+# function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
+#     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
+# end
 
-single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
-end
+# single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
+# function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
+#     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
+#     return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
+# end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     ϕ_μ = π / 4 + θ_μ / 2
@@ -102,38 +102,38 @@ function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
 
 end
 
-zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function zero_energy_analytic_parameters(ζ, ramp, T, totalparity=1; opt_kwargs...)
+zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     t = T / 2
-    initial = 0
+    initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
     return analytic_parameters(result, ζ, ramp, t)
 end
 
-analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
+analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:ζ], d[:ramp], d[:T], d[:totalparity])
+function analytical_gate_fidelity(ζ, ramp, T, totalparity; opt_kwargs...)
     (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
     return cos(π / 4 * (1 - α - ν))^2
 end
 
-single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
+single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], d[:totalparity])
+function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
     t = T / 2
     initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
     (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     return α, ν
 end
-single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity=1)
+single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], d[:totalparity])
+function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity)
     α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
     return π / 4 * ((1 + ν) - totalparity * (1 - α))
 end
 
 
-diagonal_majoranas(d::Dict, t, totalparity=1) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], d[:T], totalparity)
+diagonal_majoranas(d::Dict, t) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], d[:T], d[:totalparity])
 
-function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
+function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity)
     result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
     (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
@@ -186,19 +186,19 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity=1)
 end
 
 
-function single_braid_gate_fit(ω, P)
-    return exp(1im * ω * P[:L, :R])
-end
+# function single_braid_gate_fit(ω, P)
+#     return exp(1im * ω * P[:L, :R])
+# end
 
-function braid_gate_prediction(gate, ω, P, proj)
-    prediction = single_braid_gate_fit(ω, P)
+# function braid_gate_prediction(gate, ω, P, proj)
+#     prediction = single_braid_gate_fit(ω, P)
 
-    # proj = Diagonal([0, 1, 1, 0])
-    single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)
-    return single_braid_fidelity
-end
+#     # proj = Diagonal([0, 1, 1, 0])
+#     single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)
+#     return single_braid_fidelity
+# end
 
-function braid_gate_best_angle(gate, P, proj)
-    ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P, proj), 0.0, π).minimizer
-    return ω, braid_gate_prediction(gate, ω, P, proj)
-end
+# function braid_gate_best_angle(gate, P, proj)
+#     ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P, proj), 0.0, π).minimizer
+#     return ω, braid_gate_prediction(gate, ω, P, proj)
+# end

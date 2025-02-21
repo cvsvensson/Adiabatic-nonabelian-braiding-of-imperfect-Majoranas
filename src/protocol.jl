@@ -31,7 +31,9 @@ end
 (ramp::RampProtocol)(t) = get_deltas(ramp, t)
 
 function setup_problem(dict)
-    @unpack ϵs, u0, P, ζ, Δmin, Δmax, T, k, steps, correction, inplace = dict
+    @unpack γ, ϵs, u0, ζ, Δmin, Δmax, T, k, steps, correction, totalparity = dict
+    N = length(γ.fermion_basis)
+    P = parity_operators(γ, totalparity, SMatrix{2^(N - 1),2^(N - 1)})
     extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
     ramp = RampProtocol(Δmin, Δmax, T, k, extra_shifts)
     tspan = (0.0, 2 * T)
@@ -41,8 +43,8 @@ function setup_problem(dict)
     p = (ramp, ϵs, ζ, corr, P)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
     op = interpolate ? get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
-    prob = ODEProblem{inplace}(op, u0, tspan, p)
-    return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob)
+    prob = ODEProblem{false}(op, u0, tspan, p)
+    return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :P => P)
 end
 
 # majorana_labels = 0:5

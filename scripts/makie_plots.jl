@@ -43,7 +43,7 @@ parities_arr = zeros(ComplexF64, length(zetas), length(parity_measurements))
         :correction => InterpolatedExactSimpleCorrection(),
         :interpolate_corrected_hamiltonian => false,
         :P => P,
-        :inplace => inplace,
+
         :γ => γ,
         :u0 => u0
     )
@@ -82,7 +82,7 @@ parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(parity_measur
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => false,
             :P => P,
-            :inplace => inplace,
+    
             :γ => γ,
             :u0 => u0
         )
@@ -115,7 +115,7 @@ double_braid_fidelity = zero(single_braid_fidelity)
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => false,
             :P => P,
-            :inplace => inplace,
+    
             :γ => γ,
             :u0 => U0
         )
@@ -177,7 +177,7 @@ analytical_gates_fidelities = zeros(Float64, gridpoints)
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :P => P,
-        :inplace => inplace,
+
         :γ => γ,
         :u0 => U0,
         # :opt_kwargs => (; xatol=0, xrtol=0, atol=0, rtol=0, verbose=false)

@@ -1,15 +1,12 @@
-struct InterpolatedExactSimpleCorrection{T} <: AbstractCorrection
-    totalparity::T
-end
-InterpolatedExactSimpleCorrection() = InterpolatedExactSimpleCorrection(1)
+struct InterpolatedExactSimpleCorrection <: AbstractCorrection end
 
 function setup_correction(corr::InterpolatedExactSimpleCorrection, d::Dict)
     ζ = d[:ζ]
     ramp = d[:ramp]
     ts = d[:ts]
-    return analytical_exact_simple_correction(ζ, ramp, ts, corr.totalparity)
+    return analytical_exact_simple_correction(ζ, ramp, ts, d[:totalparity])
 end
-function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1; opt_kwargs...)
+function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwargs...)
     results = Float64[]
     for t in ts
         # Find roots of the energy split function
@@ -20,7 +17,7 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity=1; opt_kwa
     return SimpleCorrection(linear_interpolation(ts, results, extrapolation_bc=Periodic()))
 end
 
-function find_zero_energy_from_analytics(ζ, ramp, t, initial=0.0, totalparity=1; kwargs...)
+function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; kwargs...)
     result = find_zero(x -> energy_splitting(x, ζ, ramp, t, totalparity), initial; kwargs...)
     return result
 end
@@ -31,7 +28,7 @@ end
 Calculate (analytically) the energy splitting between the two lowest energy levels of the system. Works only when all ζs are the same?
 Yes it works only when all ζs are the same.
 """
-function energy_splitting(x, ζ, ramp, t, totalparity=1)
+function energy_splitting(x, ζ, ramp, t, totalparity)
     (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(x, ζ, ramp, t)
 
     Δϵ = β * ν + η_gen * μ * α + λ_gen * α * ν - x * totalparity

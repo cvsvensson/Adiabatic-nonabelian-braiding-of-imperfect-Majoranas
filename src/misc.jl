@@ -8,14 +8,14 @@ function drho!(du, u, (p, Hcache), t)
     return du
 end
 
-function matrix_vec_types(use_static_arrays, inplace, N)
-    if use_static_arrays && inplace
-        return MMatrix{2^(N - 1),2^(N - 1)}, MVector{2^(N - 1)}
-    elseif use_static_arrays && !inplace
-        return SMatrix{2^(N - 1),2^(N - 1)}, SVector{2^(N - 1)}
-    end
-    return Matrix, Vector
-end
+# function matrix_vec_types(use_static_arrays, inplace, N)
+#     if use_static_arrays && inplace
+#         return MMatrix{2^(N - 1),2^(N - 1)}, MVector{2^(N - 1)}
+#     elseif use_static_arrays && !inplace
+#         return SMatrix{2^(N - 1),2^(N - 1)}, SVector{2^(N - 1)}
+#     end
+#     return Matrix, Vector
+# end
 
 function parity_operators(γ::SingleParticleMajoranaBasis, parity, mtype)
     Pnew = ProjectedHamiltonianBasis(γ, parity)
