@@ -43,7 +43,7 @@ function gate_overlaps(gate, gates::Dict)
 end
 
 gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
-gate_fidelity(g1, g2, proj) = abs(dot(g1, proj*g2*proj)^2 / (dot(g1, proj*g1*proj) * dot(g2, proj*g2*proj)))
+gate_fidelity(g1, g2, proj) = abs(dot(g1, proj * g2 * proj)^2 / (dot(g1, proj * g1 * proj) * dot(g2, proj * g2 * proj)))
 # Can you write the above function using trace, * and dagger?
 #gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2)))
 
@@ -87,18 +87,18 @@ end
 
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T/2, totalparity; opt_kwargs...)
+    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T / 2, totalparity; opt_kwargs...)
     η = ζ^2
     ϕ = atan(η)
-    θ_μ = -totalparity * 1/2* atan(2 * sin(ϕ) * tan(ϕ)/(1+sin(ϕ)^2-tan(ϕ)^2) )
+    θ_μ = -totalparity * 1 / 2 * atan(2 * sin(ϕ) * tan(ϕ) / (1 + sin(ϕ)^2 - tan(ϕ)^2))
     ν = sin(θ_μ)
-    θ_α = -1*atan(-tan(ϕ)*tan(θ_μ) + totalparity* sin(ϕ) )
+    θ_α = -1 * atan(-tan(ϕ) * tan(θ_μ) + totalparity * sin(ϕ))
     α = cos(θ_α)
 
     return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T/2, totalparity; opt_kwargs...)
+    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T / 2, totalparity; opt_kwargs...)
     ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
@@ -110,8 +110,8 @@ function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
 
 end
 
-zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function zero_energy_analytic_parameters(ζ, ramp, t, totalparity=1; opt_kwargs...)
+zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...)
     initial = 0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
     return analytic_parameters(result, ζ, ramp, t)
@@ -119,15 +119,15 @@ end
 
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:ζ], d[:ramp], d[:T], d[:totalparity])
 function analytical_gate_fidelity(ζ, ramp, T, totalparity; opt_kwargs...)
-    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T/2, totalparity; opt_kwargs...)
+    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T / 2, totalparity; opt_kwargs...)
     return cos(π / 4 * (1 - α - ν))^2
 end
 
 single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], d[:totalparity])
 function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    initial = 0.0
-    result = find_zero_energy_from_analytics(ζ, ramp, T / 2, initial, totalparity)
-    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, T/2)
+    # initial = 0.0
+    result = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
+    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, T / 2)
     return α, ν
 end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], d[:totalparity])
@@ -158,7 +158,7 @@ function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity)
     γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
     γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
     γ_θ = cos(θ_23) * γ[:M̃] + sin(θ_23) * γ_ϕ
-    γ_Θ_disc = - sin(θ_23) * γ[:M̃] + cos(θ_23) * γ_ϕ 
+    γ_Θ_disc = -sin(θ_23) * γ[:M̃] + cos(θ_23) * γ_ϕ
     # old_labels_to_new = Dict(zip(0:5, [:M, :M̃, :L, :R, :L̃, :R̃]))
 
     γ1 = α * γ[:M] + β * γ_η

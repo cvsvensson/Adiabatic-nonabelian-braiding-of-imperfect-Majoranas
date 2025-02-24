@@ -12,11 +12,11 @@ function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
 end
 _error_ham(Δs, ζ::Number, P) = _error_ham(Δs, (ζ, ζ, ζ), P)
 _error_ham(Δs, ζs, P) = +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
-_error_ham(ramp, t, ζ::Number, P) = _error_ham(ramp, t, (ζ, ζ, ζ), P)
-function _error_ham(ramp, t, ζs, P)
-    Δs = ramp(t)
-    +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
-end
+# _error_ham(ramp, t, ζ::Number, P) = _error_ham(ramp, t, (ζ, ζ, ζ), P)
+# function _error_ham(ramp, t, ζs, P)
+#     Δs = ramp(t)
+#     +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
+# end
 
 abstract type AbstractCorrection end
 (corr::AbstractCorrection)(t, Δs, ζs, P, ham) = error("(corr::C)(t, Δs, ζs, P, ham) not implemented for C=$(typeof(corr))")

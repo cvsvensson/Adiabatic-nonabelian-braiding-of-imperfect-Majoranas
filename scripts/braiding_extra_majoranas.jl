@@ -32,7 +32,7 @@ param_dict = Dict(
     :γ => γ, #Majorana basis
     :u0 => U0, #Initial state. Use U0 for the identity matrix.
     :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
-    :totalparity => -1
+    :totalparity => 1
 )
 
 ## Solve the system
@@ -85,7 +85,7 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 400
+gridpoints = 100
 omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_majorana_fidelity = zeros(Float64, gridpoints)
 single_braid_lucky_fidelity = zeros(Float64, gridpoints)
@@ -168,15 +168,15 @@ param_dict = Dict(
     :interpolate_corrected_hamiltonian => true,
     :γ => γ, #Majorana basis
     :u0 => U0,
-    :totalparity => -1
+    :totalparity => 1
 )
 prob = setup_problem(param_dict)
 sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6)
 # maj_hams1 = [1im * prod(diagonal_majoranas(prob, t))[subinds,subinds] for t in prob[:ts]]
+subinds = γ.fermion_basis.symmetry.qntoinds[prob[:totalparity]]
 hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]
 projs = [eigen(Matrix(1im * ham)).vectors[:, 1:2] for ham in hams]
 projs = [p * p' for p in projs]
-subinds = γ.fermion_basis.symmetry.qntoinds[prob[:totalparity]]
 P = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[subinds, subinds] for t in prob[:ts]] / 2
 ##
 [norm(p0 - p1) for (p0, p1) in zip(projs, P)] |> plot
