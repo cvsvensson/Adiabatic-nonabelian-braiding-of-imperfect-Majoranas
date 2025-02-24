@@ -1,13 +1,13 @@
 using MajoranaBraiding
-using QuantumDots
-using Majoranas
+# using QuantumDots
+# using Majoranas
 using LinearAlgebra
 using Plots
 using OrdinaryDiffEqTsit5
 using ProgressMeter
 using StaticArrays
 using Base.Threads
-using Accessors
+# using Accessors
 ##
 γ = get_majorana_basis()
 N = length(γ.fermion_basis)
@@ -42,7 +42,7 @@ plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error"
 ##
 visualize_spectrum(prob)
 visualize_deltas(prob)
-visualize_parities(sol, prob)
+# visualize_parities(sol, prob)
 visualize_analytic_parameters(prob)
 visualize_protocol(prob)
 
@@ -87,10 +87,10 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 400
 omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
-single_braid_ideal_fidelity = zeros(Float64, gridpoints)
+single_braid_majorana_fidelity = zeros(Float64, gridpoints)
 single_braid_lucky_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
-double_braid_ideal_fidelity = zeros(Float64, gridpoints)
+double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_lucky_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
@@ -120,28 +120,31 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     prob = setup_problem(local_dict)
     sol = solve(prob[:odeprob], Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
     proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
-    single_braid_gate_ideal = majorana_exchange(-prob[:P][:L, :R])
-    double_braid_gate_ideal = single_braid_gate_ideal^2
+    majorana_single_braid = majorana_exchange(-prob[:P][:L, :R])
+    single_kato = single_braid_gate_kato(prob)
+    single_lucky = single_braid_gate_lucky_guess(prob)
+    double_kato = single_braid_gate_kato(prob)^2
+    majorana_double_braid = majorana_single_braid^2
+    double_lucky = single_braid_gate_lucky_guess(prob)^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
-    single_braid_ideal_fidelity[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * single_braid_result * proj)
-    single_braid_kato_fidelity[idx] = gate_fidelity(proj * single_braid_gate_kato_ * proj, proj * single_braid_result * proj)
-    single_braid_lucky_fidelity[idx] = gate_fidelity(proj * single_braid_lucky_guess * proj, proj * single_braid_gate_ideal * proj)
-    double_braid_ideal_fidelity[idx] = gate_fidelity(proj * double_braid_gate_ideal * proj, proj * double_braid_result * proj)
-    double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_result * proj)
-    double_braid_lucky_fidelity[idx] = gate_fidelity(proj * double_braid_lucky_guess * proj, proj * double_braid_gate_ideal * proj)
+    single_braid_majorana_fidelity[idx] = gate_fidelity(majorana_single_braid, single_braid_result, proj)
+    single_braid_kato_fidelity[idx] = gate_fidelity(single_kato, single_braid_result, proj)
+    single_braid_lucky_fidelity[idx] = gate_fidelity(single_lucky, majorana_single_braid, proj)
+    double_braid_majorana_fidelity[idx] = gate_fidelity(majorana_double_braid, double_braid_result, proj)
+    double_braid_kato_fidelity[idx] = gate_fidelity(double_kato, double_braid_result, proj)
+    double_braid_lucky_fidelity[idx] = gate_fidelity(double_lucky, majorana_double_braid, proj)
 
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
-# Take away label from the plot
-plot(omegas/(pi/4), double_braid_ideal_fidelity, label="", lw=2)
-plot!(omegas/(pi/4), double_braid_lucky_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot(omegas / (pi / 4), double_braid_majorana_fidelity, label="", lw=2)
+plot!(omegas / (pi / 4), double_braid_lucky_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
-# plot!(omegas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ω", lw=2)
-plot(omegas, double_braid_ideal_fidelity, label="double_braid_ideal_fidelity", lw=2)
+# plot!(omegas, single_braid_majorana_fidelity, label="single_braid_majorana_fidelity", xlabel="ω", lw=2)
+plot(omegas, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
 plot(omegas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
 plot!(omegas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
 plot(omegas, analytical_fidelity, label="analytical majorana similarity", lw=2)
@@ -153,34 +156,31 @@ plot(omegas, double_braid_lucky_fidelity, label="double_braid_lucky_fidelity", l
 plot(omegas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
 ##
 ## Compare hamiltonian from M to the one from the diagonal_majoranas function at some time
+param_dict = Dict(
+    :ζ => 0.2, #Majorana overlaps. Number or triplet of numbers
+    :ϵs => (0, 0, 0), #Dot energy levels
+    :T => 5e3, #Maximum time
+    :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
+    :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+    :k => 2e1, #Determines the slope of the ramp
+    :steps => 2000, #Number of timesteps for interpolations
+    :correction => InterpolatedExactSimpleCorrection(),
+    :interpolate_corrected_hamiltonian => true,
+    :γ => γ, #Majorana basis
+    :u0 => U0,
+    :totalparity => -1
+)
+prob = setup_problem(param_dict)
 sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6)
-maj_hams1 = [1im * prod(diagonal_majoranas(prob, t))[5:8, 5:8] for t in prob[:ts]]
-maj_hams2 = [1im * prod(diagonal_majoranas(prob, t))[1:4, 1:4] for t in prob[:ts]]
-P1 = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
-P2 = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] for t in prob[:ts]] / 2
+# maj_hams1 = [1im * prod(diagonal_majoranas(prob, t))[subinds,subinds] for t in prob[:ts]]
 hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]
 projs = [eigen(Matrix(1im * ham)).vectors[:, 1:2] for ham in hams]
 projs = [p * p' for p in projs]
-
-if prob[:totalparity] == -1
-    pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(t)) for t in prob[:ts]]
-    P = [I - 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
-else
-    pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] * sol(t)) for t in prob[:ts]]
-    P = [I - 1im * prod(diagonal_majoranas(prob, t)[1:2])[1:4, 1:4] for t in prob[:ts]] / 2
-end
-# Plot pars
-real(pars) |> plot
+subinds = γ.fermion_basis.symmetry.qntoinds[prob[:totalparity]]
+P = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[subinds, subinds] for t in prob[:ts]] / 2
 ##
 [norm(p0 - p1) for (p0, p1) in zip(projs, P)] |> plot
 ##
-[abs(tr(prob[:P][:M, :L] * h)) for h in hams] |> plot
-[abs(tr(prob[:P][:M, :L] * h)) for h in maj_hams1] |> plot!
-[abs(tr(prob[:P][:M, :L] * h)) for h in maj_hams2] |> plot!
-##
-[abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, hams)] |> plot
-[abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, maj_hams1)] |> plot!
-[abs(tr(p' * h1' * p * p' * h2 * p)) / (norm(p'h1 * p) * norm(p'h2 * p)) for (p, h1, h2) in zip(projs, hams, maj_hams2)] |> plot!
 
 ## Do a sweep over zetas and plot the groundstate_components
 zetas = range(1e-6, 1, length=100)

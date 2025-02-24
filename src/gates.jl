@@ -43,6 +43,7 @@ function gate_overlaps(gate, gates::Dict)
 end
 
 gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
+gate_fidelity(g1, g2, proj) = abs(dot(g1, proj*g2*proj)^2 / (dot(g1, proj*g1*proj) * dot(g2, proj*g2*proj)))
 # Can you write the above function using trace, * and dagger?
 #gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2)))
 
@@ -79,10 +80,10 @@ end
 #     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
 #     return exp(1im * π / 4 * ((1 - α) * P[:L, :R] - (1 - ν) * P[:L̃, :R̃]))
 # end
-# single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-# function single_braid_gate_kato(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-#     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
-# end
+single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function single_braid_gate_kato(P, ζ, ramp, T, totalparity; opt_kwargs...)
+    foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
+end
 
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity; opt_kwargs...)
