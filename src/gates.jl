@@ -86,11 +86,18 @@ end
 
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
+    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T/2, totalparity; opt_kwargs...)
+    η = ζ^2
+    ϕ = atan(η)
+    θ_μ = -totalparity * 1/2* atan(2 * sin(ϕ) * tan(ϕ)/(1+sin(ϕ)^2-tan(ϕ)^2) )
+    ν = sin(θ_μ)
+    θ_α = -1*atan(-tan(ϕ)*tan(θ_μ) + totalparity* sin(ϕ) )
+    α = cos(θ_α)
+
     return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
+    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T/2, totalparity; opt_kwargs...)
     ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
@@ -103,8 +110,7 @@ function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
 end
 
 zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function zero_energy_analytic_parameters(ζ, ramp, T, totalparity=1; opt_kwargs...)
-    t = T / 2
+function zero_energy_analytic_parameters(ζ, ramp, t, totalparity=1; opt_kwargs...)
     initial = 0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
     return analytic_parameters(result, ζ, ramp, t)
@@ -112,16 +118,15 @@ end
 
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function analytical_gate_fidelity(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
+    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T/2, totalparity; opt_kwargs...)
     return cos(π / 4 * (1 - α - ν))^2
 end
 
 single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
 function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity=1)
-    t = T / 2
     initial = 0.0
-    result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity)
-    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
+    result = find_zero_energy_from_analytics(ζ, ramp, T / 2, initial, totalparity)
+    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, T/2)
     return α, ν
 end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
