@@ -19,6 +19,11 @@ end
 
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; kwargs...)
     result = find_zero(x -> energy_splitting(x, ζ, ramp, t, totalparity), initial; kwargs...)
+
+    η = ζ^2
+    ϕ = atan(η)
+    λ = totalparity * sin(ϕ)
+    #result = λ                 ## Solution in the middle of the protocol
     return result
 end
 
@@ -46,12 +51,11 @@ In the limit Δ_1 = 0, Λ = λ and H = η.
 function analytic_parameters(x, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
-    Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     θ_spherical = atan(Δ23, Δs[1])
 
     η = ζ^2
     η_gen = η * sin(θ_spherical)^2 - x * cos(θ_spherical)
-    λ_gen = sin(θ_spherical) * x + cos(θ_spherical) * sin(θ_spherical) * η
+    λ_gen = x * sin(θ_spherical) + η * cos(θ_spherical) * sin(θ_spherical)
     θ_μ = -1 / 2 * atan(2 * λ_gen * η_gen, 1 + λ_gen^2 - η_gen^2)
     θ_α = atan(η_gen * tan(θ_μ) - λ_gen)
 
