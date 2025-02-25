@@ -39,12 +39,13 @@ function setup_problem(dict)
     tspan = (0.0, 2 * T)
     ts = range(0, tspan[2], steps)
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan)
-    corr = MajoranaBraiding.setup_correction(correction, newdict)
+    corr = setup_correction(correction, newdict)
     p = (ramp, ϵs, ζ, corr, P)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
+    H(p, t) = ham_with_corrections(p, t)
     op = interpolate ? get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
     prob = ODEProblem{false}(op, u0, tspan, p)
-    return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :P => P)
+    return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :P => P, :H => H)
 end
 
 # majorana_labels = 0:5

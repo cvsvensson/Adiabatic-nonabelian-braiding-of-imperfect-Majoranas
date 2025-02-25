@@ -44,8 +44,6 @@ end
 
 gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
 gate_fidelity(g1, g2, proj) = abs(dot(g1, proj * g2 * proj)^2 / (dot(g1, proj * g1 * proj) * dot(g2, proj * g2 * proj)))
-# Can you write the above function using trace, * and dagger?
-#gate_fidelity(g1, g2) = abs(tr(g1' * g2)^2 / (tr(g1' * g1) * tr(g2' * g2)))
 
 @testitem "majorana_exchange" begin
     using LinearAlgebra, QuantumDots

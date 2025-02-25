@@ -11,12 +11,12 @@ using Base.Threads
 ##
 γ = get_majorana_basis()
 N = length(γ.fermion_basis)
-use_static_arrays = true
-mtype, vtype = SMatrix{2^(N - 1),2^(N - 1)}, SVector{2^(N - 1)}
+# use_static_arrays = true
+mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
 
 ## Initial state and identity matrix
 # u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
-U0 = mtype(Matrix{ComplexF64}(I, 2^(N - 1), 2^(N - 1)))
+U0 = mtype(I(2^(N - 1)))
 
 ##
 param_dict = Dict(
@@ -36,7 +36,14 @@ param_dict = Dict(
 )
 
 ## Solve the system
-prob = setup_problem(param_dict)
+prob = setup_problem(param_dict);
+
+h1 = -1im * prob[:op](prob[:u0], prob[:p], t)
+h2 = prob[:H](prob[:p], t)
+
+energy_gaps = map(t -> diff(eigvals(-1im * prob[:op](prob[:u0], prob[:p], t)))[1], range(0, 2prob[:T], 100))
+energy_gaps2 = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], range(0, 2prob[:T], 100))
+
 @time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
 ##

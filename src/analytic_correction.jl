@@ -21,8 +21,9 @@ function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs.
     ϕ = atan(η)
     λ = totalparity * sin(ϕ)
 end
-function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; kwargs...)
-    totalparity*find_zero(λ -> energy_splitting(totalparity*λ, ζ, ramp, t, totalparity), initial; kwargs...)
+function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=0.0, rtol=0.0, kwargs...)
+    λ = find_zero(λ -> energy_splitting(λ, ζ, ramp, t, totalparity), initial; atol, rtol, kwargs...)
+    return λ
 end
 
 """ 
@@ -75,4 +76,54 @@ end
     for totalparity in (-1, 1)
         @test MajoranaBraiding.find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity) ≈ find_zero_energy_from_analytics(ζ, ramp, T / 2, 0.0, totalparity)
     end
+end
+
+@testitem "Energy splitting" begin
+    using StaticArrays, LinearAlgebra
+    γ = get_majorana_basis()
+    N = length(γ.fermion_basis)
+    mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
+    U0 = mtype(I(2^(N - 1)))
+
+    param_dict = Dict(
+        :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
+        :ϵs => (0, 0, 0), #Dot energy levels
+        :T => 1e4, #Maximum time
+        :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
+        :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+        :k => 2e1, #Determines the slope of the ramp
+        :steps => 2000, #Number of timesteps for interpolations
+        :correction => NoCorrection(), #Different corrections are available. This is the most relevant one for the paper
+        :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
+        :γ => γ, #Majorana basis
+        :u0 => U0, #Initial state. Use U0 for the identity matrix.
+        :totalparity => 1
+    )
+    prob = setup_problem(param_dict)
+    ts = range(0, 2prob[:T], 1000)
+    energy_gaps = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], ts)
+    energy_gaps2 = map(t -> diff(eigvals(-1im*prob[:op](prob[:u0], prob[:p], t)))[1], ts)
+    energy_gaps_analytic = [MajoranaBraiding.energy_splitting(0, prob[:ζ], prob[:ramp], t, prob[:totalparity]) for t in ts]
+    plot(energy_gaps);
+    plot!(energy_gaps2);
+    plot!(2energy_gaps_analytic)
+
+    param_dict = Dict(
+        :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
+        :ϵs => (0, 0, 0), #Dot energy levels
+        :T => 1e4, #Maximum time
+        :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
+        :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+        :k => 2e1, #Determines the slope of the ramp
+        :steps => 2000, #Number of timesteps for interpolations
+        :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+        :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
+        :γ => γ, #Majorana basis
+        :u0 => U0, #Initial state. Use U0 for the identity matrix.
+        :totalparity => 1
+    )
+
+    energy_gaps = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], range(0, 2prob[:T], 1000))
+    @test all(abs.(energy_gaps) .< 1e-10)
+
 end
