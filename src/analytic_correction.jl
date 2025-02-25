@@ -22,22 +22,22 @@ function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs.
     λ = totalparity * sin(ϕ)
 end
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=0.0, rtol=0.0, kwargs...)
-    λ = find_zero(λ -> energy_splitting(λ, ζ, ramp, t, totalparity), initial; atol, rtol, kwargs...)
+    λ = find_zero(λ -> analytic_parameters(totalparity * λ, ζ, ramp, t).ε, initial; atol, rtol, kwargs...)
     return λ
 end
 
-""" 
-    energy_splitting(x, ζ, ramp, t, totalparity)
+# """ 
+#     energy_splitting(x, ζ, ramp, t, totalparity)
 
-Calculate (analytically) the energy splitting between the two lowest energy levels of the system. Works only when all ζs are the same.
-"""
-function energy_splitting(λ, ζ, ramp, t, totalparity)
-    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(λ, ζ, ramp, t)
+# Calculate (analytically) the energy splitting between the two lowest energy levels of the system. Works only when all ζs are the same.
+# """
+# function energy_splitting(λ, ζ, ramp, t, totalparity)
+#     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(λ, ζ, ramp, t)
 
-    Δϵ = β * ν + η_gen * μ * α + λ_gen * α * ν - λ * totalparity
-    Δϵ = η_gen * α - totalparity * λ * μ
-    return Δϵ
-end
+#     Δϵ = β * ν + ηtilde * μ * α + λtilde * α * ν - λ * totalparity
+#     Δϵ = ηtilde * α - totalparity * λ * μ
+#     return Δϵ
+# end
 
 """
     analytic_parameters(x, ζ, ramp, t)
@@ -49,17 +49,19 @@ In the limit Δ_1 = 0, Λ = λ and H = η.
 function analytic_parameters(λ, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
-    θ_spherical = atan(Δ23, Δs[1])
+    θ = atan(Δ23, Δs[1])
 
     η = ζ^2
-    η_gen = η * sin(θ_spherical)^2 - λ * cos(θ_spherical)
-    λ_gen = λ * sin(θ_spherical) + η * cos(θ_spherical) * sin(θ_spherical)
-    θ_μ = -1 / 2 * atan(2 * λ_gen * η_gen, 1 + λ_gen^2 - η_gen^2)
-    θ_α = atan(η_gen * tan(θ_μ) - λ_gen)
+    ηtilde = η * sin(θ)^2 - λ * cos(θ)
+    λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
+    θ_μ = -1 / 2 * atan(2 * λtilde * ηtilde, 1 + λtilde^2 - ηtilde^2)
+    θ_α = atan(ηtilde * tan(θ_μ) - λtilde)
 
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
-    return (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ)
+    Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
+    ε = ηtilde * α / μ
+    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε)
 end
 
 function analytic_parameters_midpoint(ζ, ramp, totalparity)
@@ -102,10 +104,10 @@ end
     prob = setup_problem(param_dict)
     ts = range(0, 2prob[:T], 1000)
     energy_gaps = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], ts)
-    energy_gaps2 = map(t -> diff(eigvals(-1im*prob[:op](prob[:u0], prob[:p], t)))[1], ts)
+    energy_gaps2 = map(t -> diff(eigvals(-1im * prob[:op](prob[:u0], prob[:p], t)))[1], ts)
     energy_gaps_analytic = [MajoranaBraiding.energy_splitting(0, prob[:ζ], prob[:ramp], t, prob[:totalparity]) for t in ts]
-    plot(energy_gaps);
-    plot!(energy_gaps2);
+    plot(energy_gaps)
+    plot!(energy_gaps2)
     plot!(2energy_gaps_analytic)
 
     param_dict = Dict(

@@ -125,7 +125,7 @@ single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angl
 function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
     # initial = 0.0
     result = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
-    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, T / 2)
+    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, T / 2)
     return α, ν
 end
 single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], d[:totalparity])
@@ -135,60 +135,121 @@ function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity)
 end
 
 
-diagonal_majoranas(d::Dict, t) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], d[:T], d[:totalparity])
+diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], λ)
+diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:ramp], t, d[:ζ], d[:totalparity])
 
-function diagonal_majoranas(γ, ramp, t, ζ, T, totalparity)
-    result = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
-    (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, t)
+function diagonal_majoranas_at_zero_energy(γ, ramp, t, ζ, totalparity)
+    λ = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
+    diagonal_majoranas(γ, ramp, t, ζ, λ)
+end
+function diagonal_majoranas(γ, ramp, t, ζ, λ)
+    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(λ, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
 
-    Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
+    # Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ_23 = √(Δs[2]^2 + Δs[3]^2)
-    θ_23 = atan(Δ_23, Δs[1])
-    ϕ_23 = atan(Δs[3], Δs[2])
+    # θ_23 = atan(Δ_23, Δs[1])
+    # ϕ_23 = atan(Δs[3], Δs[2])
 
-    ρ1 = cos(θ_23)
-    ρ2 = sin(θ_23) * cos(ϕ_23)
-    ρ3 = sin(θ_23) * sin(ϕ_23)
+    # # ρ1 = cos(θ_23)
+    # # ρ2 = sin(θ_23) * cos(ϕ_23)
+    # # ρ3 = sin(θ_23) * sin(ϕ_23)
 
-    Δtot *= α * μ + η_gen * β * ν - λ_gen * β * μ
+    # # Δtot *= α * μ + ηtilde * β * ν - λtilde * β * μ
 
-    γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
-    γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
-    γ_θ = cos(θ_23) * γ[:M̃] + sin(θ_23) * γ_ϕ
-    γ_Θ_disc = -sin(θ_23) * γ[:M̃] + cos(θ_23) * γ_ϕ
-    # old_labels_to_new = Dict(zip(0:5, [:M, :M̃, :L, :R, :L̃, :R̃]))
+    # γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
+    # γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
+    # γ_θ = cos(θ_23) * γ[:M̃] + sin(θ_23) * γ_ϕ
+    # γ_Θ_disc = -sin(θ_23) * γ[:M̃] + cos(θ_23) * γ_ϕ
 
-    γ1 = α * γ[:M] + β * γ_η
-    γ2 = μ * γ_θ + ν * γ_Θ_disc
+    # γ1 = α * γ[:M] + β * γ_η
+    # γ2 = μ * γ_θ + ν * γ_Θ_disc
 
-    return γ1, γ2, Δtot
+
+    θ = atan(Δ_23, Δs[1])
+    ϕ = atan(Δs[3], Δs[2])
+    sθ, cθ = sincos(θ)
+    sϕ, cϕ = sincos(ϕ)
+
+    γΔ = cθ * γ[:M̃] + sθ * cϕ * γ[:L] + sθ * sϕ * γ[:R]
+
+    γθprime = -sθ * γ[:M̃] + cθ * cϕ * γ[:L] + cθ * sϕ * γ[:R]
+    γϕprime = -sϕ * γ[:L] + cϕ * γ[:R]
+    γη = cϕ * γ[:L̃] + sϕ * γ[:R̃]
+    γηprime = -sϕ * γ[:L̃] + cϕ * γ[:R̃]
+
+    γ1D = α * γ[:M] + β * γη
+    γΔD = μ * γΔ + ν * γθprime
+    γηD = α * γη - β * γ[:M]
+    γθDprime = μ * γθprime - ν * γΔ
+
+    return γ1D, γΔD, γηD, γθDprime, γϕprime, γηprime
+    # return γ1, γ2, Δtot
     # Sectionwise definition of the diagonal Majoranas
-    if 0 <= t % T < T / 3
-        γ_1 = γ[:M]
-        γ_η = γ[:L̃]
-        γ_Δ = ρ1 * γ[:M̃] + ρ2 * γ[:L]
-        γ_Δ_disc = ρ1 * γ[:L] - ρ2 * γ[:M̃]
-        γ1 = α * γ_1 + β * γ_η
-        γ2 = μ * γ_Δ + ν * γ_Δ_disc
-    elseif T / 3 <= t % T < 2 * T / 3
-        γ_1 = γ[:M]
-        γ_η = ρ2 * γ[:L̃] + ρ3 * γ[:R̃]
-        γ_1̃ = γ[:M̃]
-        γ_Δ = ρ2 * γ[:L] + ρ3 * γ[:R]
-        γ1 = α * γ_1 + β * γ_η
-        γ2 = μ * γ_Δ + ν * γ_1̃
-    else
-        γ_1 = γ[:M]
-        γ_η = γ[:R̃]
-        γ_Δ = ρ1 * γ[:M̃] + ρ3 * γ[:R]
-        γ_Δ_disc = ρ1 * γ[:R] - ρ3 * γ[:M̃]
-        γ1 = α * γ_1 + β * γ_η
-        γ2 = μ * γ_Δ + ν * γ_Δ_disc
-    end
+    # if 0 <= t % T < T / 3
+    #     γ_1 = γ[:M]
+    #     γ_η = γ[:L̃]
+    #     γ_Δ = ρ1 * γ[:M̃] + ρ2 * γ[:L]
+    #     γ_Δ_disc = ρ1 * γ[:L] - ρ2 * γ[:M̃]
+    #     γ1 = α * γ_1 + β * γ_η
+    #     γ2 = μ * γ_Δ + ν * γ_Δ_disc
+    # elseif T / 3 <= t % T < 2 * T / 3
+    #     γ_1 = γ[:M]
+    #     γ_η = ρ2 * γ[:L̃] + ρ3 * γ[:R̃]
+    #     γ_1̃ = γ[:M̃]
+    #     γ_Δ = ρ2 * γ[:L] + ρ3 * γ[:R]
+    #     γ1 = α * γ_1 + β * γ_η
+    #     γ2 = μ * γ_Δ + ν * γ_1̃
+    # else
+    #     γ_1 = γ[:M]
+    #     γ_η = γ[:R̃]
+    #     γ_Δ = ρ1 * γ[:M̃] + ρ3 * γ[:R]
+    #     γ_Δ_disc = ρ1 * γ[:R] - ρ3 * γ[:M̃]
+    #     γ1 = α * γ_1 + β * γ_η
+    #     γ2 = μ * γ_Δ + ν * γ_Δ_disc
+    # end
 
 end
 
+@testitem "Diagonal majoranas" begin
+    using LinearAlgebra
+    γ = get_majorana_basis()
+    T = 1e4
+    ramp = RampProtocol(0, 1e6, T, 1e1)
+    ζ = 0.5
+    ts = range(0, 2T, 100)
+    parity_operator = 1im * prod(γ)
+    λ = 0
+    γdiag = diagonal_majoranas(γ, ramp, T / 3, ζ, λ)
+    parity_operator_diag = 1im * prod(γdiag)
+    @test parity_operator ≈ parity_operator_diag
+
+    @test all(norm(y^2 - I) < 1e-10 for y in γdiag)
+    ## test CAR 
+    for (y1, y2) in Base.product(γ, γ)
+        @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
+    end
+    # for ((n1, y1), (n2, y2)) in Base.product(enumerate(γdiag), enumerate(γdiag))
+    #     println(n1, ",", n2)
+    for (y1, y2) in Base.product(γdiag, γdiag)
+        @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
+    end
+
+    #Non-zero lambda
+    λ = 0.3
+    γdiag = diagonal_majoranas(γ, ramp, T / 3, ζ, λ)
+    parity_operator_diag = 1im * prod(γdiag)
+    @test parity_operator ≈ parity_operator_diag
+
+    @test all(norm(y^2 - I) < 1e-10 for y in γdiag)
+    ## test CAR 
+    for (y1, y2) in Base.product(γ, γ)
+        @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
+    end
+    for (y1, y2) in Base.product(γdiag, γdiag)
+        @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
+    end
+end
 
 # function single_braid_gate_fit(ω, P)
 #     return exp(1im * ω * P[:L, :R])
