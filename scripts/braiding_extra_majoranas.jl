@@ -11,7 +11,7 @@ using Accessors
 ##
 γ = get_majorana_basis()
 N = length(γ.fermion_basis)
-totalparity = 1
+totalparity = -1
 use_static_arrays = true
 inplace = !use_static_arrays
 mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
@@ -28,8 +28,9 @@ param_dict = Dict(
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
-    :k => 2e1, #Determines the slope of the ramp
+    :k => 1e1, #Determines the slope of the ramp
     :steps => 2000, #Number of timesteps for interpolations
+    :totalparity => totalparity, #Total parity of the system
     :correction => InterpolatedExactSimpleCorrection(totalparity), #Different corrections are available. This is the most relevant one for the paper
     :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
     :P => P, #Dict with parity operators
@@ -165,7 +166,7 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 400
+gridpoints = 100
 omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_ideal_fidelity = zeros(Float64, gridpoints)
 single_braid_lucky_fidelity = zeros(Float64, gridpoints)
@@ -182,12 +183,13 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :ζ => tan(omega),
         :ϵs => (0, 0, 0),
-        :T => 3e2,
+        :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 4000,
-        :correction => InterpolatedExactSimpleCorrection(),
+        :totalparity => totalparity,
+        :correction => InterpolatedExactSimpleCorrection(totalparity),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
@@ -201,12 +203,15 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     prob = setup_problem(local_dict)
     sol = solve(prob[:odeprob], Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
     proj = totalparity == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
+    
     single_braid_gate_ideal = majorana_exchange(-P[:L, :R])
     single_braid_lucky_guess = single_braid_gate_lucky_guess(prob)
     single_braid_gate_kato_ = single_braid_gate_kato(prob)
+
     double_braid_gate_ideal = single_braid_gate_ideal^2
     double_braid_gate_kato = single_braid_gate_kato_^2
     double_braid_lucky_guess = single_braid_lucky_guess^2
+
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
