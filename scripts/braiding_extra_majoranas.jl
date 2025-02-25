@@ -32,18 +32,11 @@ param_dict = Dict(
     :γ => γ, #Majorana basis
     :u0 => U0, #Initial state. Use U0 for the identity matrix.
     :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
-    :totalparity => 1
+    :totalparity => -1
 )
 
 ## Solve the system
 prob = setup_problem(param_dict);
-
-h1 = -1im * prob[:op](prob[:u0], prob[:p], t)
-h2 = prob[:H](prob[:p], t)
-
-energy_gaps = map(t -> diff(eigvals(-1im * prob[:op](prob[:u0], prob[:p], t)))[1], range(0, 2prob[:T], 100))
-energy_gaps2 = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], range(0, 2prob[:T], 100))
-
 @time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
 ##
@@ -92,15 +85,14 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 100
-gridpoints = 100
+gridpoints = 50
 omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_majorana_fidelity = zeros(Float64, gridpoints)
-single_braid_lucky_fidelity = zeros(Float64, gridpoints)
+single_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
-double_braid_lucky_fidelity = zeros(Float64, gridpoints)
+double_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
 analytical_angles = zeros(Float64, gridpoints)
 analytical_fidelity = zeros(Float64, gridpoints)
@@ -115,15 +107,14 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 4000,
-        :totalparity => totalparity,
-        :correction => InterpolatedExactSimpleCorrection(totalparity),
+        :correction => InterpolatedExactSimpleCorrection(),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :γ => γ,
         :u0 => U0,
-        :totalparity => -1
+        :totalparity => 1
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
@@ -131,35 +122,35 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     majorana_single_braid = majorana_exchange(-prob[:P][:L, :R])
     single_kato = single_braid_gate_kato(prob)
-    single_lucky = single_braid_gate_lucky_guess(prob)
+    single_gate_analytical = single_braid_gate_analytical(prob)
     double_kato = single_braid_gate_kato(prob)^2
     majorana_double_braid = majorana_single_braid^2
-    double_lucky = single_braid_gate_lucky_guess(prob)^2
+    double_gate_analytical = single_braid_gate_analytical(prob)^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
     single_braid_majorana_fidelity[idx] = gate_fidelity(majorana_single_braid, single_braid_result, proj)
     single_braid_kato_fidelity[idx] = gate_fidelity(single_kato, single_braid_result, proj)
-    single_braid_lucky_fidelity[idx] = gate_fidelity(single_lucky, majorana_single_braid, proj)
+    single_braid_analytical_gate_fidelity[idx] = gate_fidelity(single_gate_analytical, majorana_single_braid, proj)
     double_braid_majorana_fidelity[idx] = gate_fidelity(majorana_double_braid, double_braid_result, proj)
     double_braid_kato_fidelity[idx] = gate_fidelity(double_kato, double_braid_result, proj)
-    double_braid_lucky_fidelity[idx] = gate_fidelity(double_lucky, majorana_double_braid, proj)
+    double_braid_analytical_gate_fidelity[idx] = gate_fidelity(double_gate_analytical, majorana_double_braid, proj)
 
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
 plot(omegas / (pi / 4), double_braid_majorana_fidelity, label="", lw=2)
-plot!(omegas / (pi / 4), double_braid_lucky_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot!(omegas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
 # plot!(omegas, single_braid_majorana_fidelity, label="single_braid_majorana_fidelity", xlabel="ω", lw=2)
 plot(omegas, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
 plot(omegas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
 plot!(omegas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
-plot(omegas, analytical_fidelity, label="analytical majorana similarity", lw=2)
+plot!(omegas, analytical_fidelity, label="analytical majorana similarity", lw=2)
 # plot!(omegas, fidelity_numerics_analytic, label="fidelity_numerics_analytic", lw=2)
-plot(omegas, single_braid_lucky_fidelity, label="single_braid_lucky_fidelity", lw=2)
-plot(omegas, double_braid_lucky_fidelity, label="double_braid_lucky_fidelity", lw=2)
+plot!(omegas, single_braid_analytical_gate_fidelity, label="single_braid_analytical_gate_fidelity", lw=2)
+plot!(omegas, double_braid_analytical_gate_fidelity, label="double_braid_analytical_gate_fidelity", lw=2)
 # plot!(omegas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ω", lw=2, frame=:box)
 ## plot angles 
 plot(omegas, analytical_angles, label="analytical_angles", lw=2, frame=:box)

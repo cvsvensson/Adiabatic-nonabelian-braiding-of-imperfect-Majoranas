@@ -83,12 +83,13 @@ function single_braid_gate_kato(P, ζ, ramp, T, totalparity; opt_kwargs...)
     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
 end
 
-single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
-function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs...)
-    θ_μ = -1/2* atan(2 * λ * η/(1 + λ^2 - η^2) )
+single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function single_braid_gate_analytical(P, ζ, ramp, T, totalparity; opt_kwargs...)
+    λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; opt_kwargs...)
+    η = ζ^2
+    θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
     ν = sin(θ_μ)
-    θ_α = -1*atan(-η * tan(θ_μ) + λ )
+    θ_α = -1 * atan(-η * tan(θ_μ) + λ)
     α = cos(θ_α)
     return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
 end
@@ -107,7 +108,7 @@ end
 
 zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
 function zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...)
-    initial = 0
+    initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
     return analytic_parameters(result, ζ, ramp, t)
 end
@@ -140,13 +141,9 @@ function diagonal_majoranas_at_zero_energy(γ, ramp, t, ζ, totalparity)
     diagonal_majoranas(γ, ramp, t, ζ, λ)
 end
 function diagonal_majoranas(γ, ramp, t, ζ, λ)
-    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(λ, ζ, ramp, t)
-    Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
+    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, ζ, ramp, t)
+    # Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
 
-    Δ_23 = √(Δs[2]^2 + Δs[3]^2)
-
-    θ = atan(Δ_23, Δs[1])
-    ϕ = atan(Δs[3], Δs[2])
     sθ, cθ = sincos(θ)
     sϕ, cϕ = sincos(ϕ)
 

@@ -57,7 +57,7 @@ results = Float64[]
 alg = BFGS()
 for t in ts
     f(x) = cost_function(only(x), t)
-    initial = length(results) > 0 ? results[end] : 1.0
+    initial = 0.0#length(results) > 0 ? results[end] : 1.0
     result = optimize(f, [initial], alg, Optim.Options(time_limit=10 / length(ts)))
     push!(results, only(result.minimizer))
 end
@@ -69,17 +69,17 @@ int = cubic_spline_interpolation(ts, results)
 plot(ts, int(ts))
 plot!(ts, results)
 
-function optimized_corrmax(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
-    results = Float64[]
-    function cost_function(x, t)
-        vals = eigvals(H((ramp, ϵs, ζs, x, 0, P), t))
-        return vals[2] - vals[1]
-    end
-    for t in ts
-        f(x) = cost_function(only(x), t)
-        initial = length(results) > 0 ? results[end] : 1.0
-        result = optimize(f, [initial], alg, Optim.Options(time_limit=1 / length(ts)))
-        push!(results, only(result.minimizer))
-    end
-    return linear_interpolation(ts, results)
-end
+# function optimized_corrmax(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
+#     results = Float64[]
+#     function cost_function(x, t)
+#         vals = eigvals(H((ramp, ϵs, ζs, x, 0, P), t))
+#         return vals[2] - vals[1]
+#     end
+#     for t in ts
+#         f(x) = cost_function(only(x), t)
+#         initial = #length(results) > 0 ? results[end] : 1.0
+#         result = optimize(f, [initial], alg, Optim.Options(time_limit=1 / length(ts)))
+#         push!(results, only(result.minimizer))
+#     end
+#     return linear_interpolation(ts, results)
+# end

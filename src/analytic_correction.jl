@@ -10,7 +10,7 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwarg
     results = Float64[]
     for t in ts
         # Find roots of the energy split function
-        initial = length(results) > 0 ? results[end] : 0.0
+        initial = 0.0#length(results) > 0 ? results[end] : 0.0
         result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
         push!(results, result)
     end
@@ -21,8 +21,12 @@ function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs.
     ϕ = atan(η)
     λ = totalparity * sin(ϕ)
 end
-function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=0.0, rtol=0.0, kwargs...)
-    λ = find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, kwargs...)
+function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
+    λ = try
+        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, kwargs...)
+    catch
+        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, verbose=true, kwargs...)
+    end
     return λ
 end
 
@@ -60,7 +64,7 @@ function analytic_parameters(λ, ζ, ramp, t)
     Δ = sqrt(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     θ = atan(Δ23, Δs[1])
-
+    ϕ = atan(Δs[3], Δs[2])
     η = ζ^2
     ηtilde = η * sin(θ)^2 - λ * cos(θ)
     λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
@@ -70,8 +74,10 @@ function analytic_parameters(λ, ζ, ramp, t)
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
     Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ)
-    ε = ηtilde * α / μ
-    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ)
+
+    ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ
+    # rand() > 0.1 && println(β * ν + λtilde * α * ν + ηtilde * α * μ - ηtilde * α / μ )
+    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, Δ23, ϕ, η)
 end
 
 function analytic_parameters_midpoint(ζ, ramp, totalparity)
