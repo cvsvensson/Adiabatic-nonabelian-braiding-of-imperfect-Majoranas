@@ -146,25 +146,7 @@ function diagonal_majoranas(γ, ramp, t, ζ, λ)
     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(λ, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
 
-    # Δtot = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ_23 = √(Δs[2]^2 + Δs[3]^2)
-    # θ_23 = atan(Δ_23, Δs[1])
-    # ϕ_23 = atan(Δs[3], Δs[2])
-
-    # # ρ1 = cos(θ_23)
-    # # ρ2 = sin(θ_23) * cos(ϕ_23)
-    # # ρ3 = sin(θ_23) * sin(ϕ_23)
-
-    # # Δtot *= α * μ + ηtilde * β * ν - λtilde * β * μ
-
-    # γ_ϕ = cos(ϕ_23) * γ[:L] + sin(ϕ_23) * γ[:R]
-    # γ_η = cos(ϕ_23) * γ[:L̃] + sin(ϕ_23) * γ[:R̃]
-    # γ_θ = cos(θ_23) * γ[:M̃] + sin(θ_23) * γ_ϕ
-    # γ_Θ_disc = -sin(θ_23) * γ[:M̃] + cos(θ_23) * γ_ϕ
-
-    # γ1 = α * γ[:M] + β * γ_η
-    # γ2 = μ * γ_θ + ν * γ_Θ_disc
-
 
     θ = atan(Δ_23, Δs[1])
     ϕ = atan(Δs[3], Δs[2])
@@ -229,8 +211,6 @@ end
     for (y1, y2) in Base.product(γ, γ)
         @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
     end
-    # for ((n1, y1), (n2, y2)) in Base.product(enumerate(γdiag), enumerate(γdiag))
-    #     println(n1, ",", n2)
     for (y1, y2) in Base.product(γdiag, γdiag)
         @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
     end
@@ -250,20 +230,3 @@ end
         @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
     end
 end
-
-# function single_braid_gate_fit(ω, P)
-#     return exp(1im * ω * P[:L, :R])
-# end
-
-# function braid_gate_prediction(gate, ω, P, proj)
-#     prediction = single_braid_gate_fit(ω, P)
-
-#     # proj = Diagonal([0, 1, 1, 0])
-#     single_braid_fidelity = gate_fidelity(proj * prediction * proj, proj * gate * proj)
-#     return single_braid_fidelity
-# end
-
-# function braid_gate_best_angle(gate, P, proj)
-#     ω = optimize(ω -> 1 - braid_gate_prediction(gate, ω, P, proj), 0.0, π).minimizer
-#     return ω, braid_gate_prediction(gate, ω, P, proj)
-# end

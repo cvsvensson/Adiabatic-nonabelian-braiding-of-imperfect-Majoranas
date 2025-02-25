@@ -22,7 +22,7 @@ function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs.
     λ = totalparity * sin(ϕ)
 end
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=0.0, rtol=0.0, kwargs...)
-    λ = find_zero(λ -> analytic_parameters(totalparity * λ, ζ, ramp, t).ε, initial; atol, rtol, kwargs...)
+    λ = find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, kwargs...)
     return λ
 end
 
@@ -38,6 +38,15 @@ end
 #     Δϵ = ηtilde * α - totalparity * λ * μ
 #     return Δϵ
 # end
+function analytic_energy_spectrum(λ, ζ, ramp, t, totalparity)
+    (; Δ, ε, Δtilde) = analytic_parameters(λ, ζ, ramp, t)
+    # Δ * sort([ε - totalparity * λ, ε + totalparity * λ, -ε + Δtilde - totalparity * λ, -ε - Δtilde + totalparity * λ])
+    # totalparity = 1
+
+    # println(Δ, ε, Δtilde)
+    es = [0, ε + λ, ε + Δtilde, Δtilde + λ] .- (totalparity == -1) * ε
+    2Δ * sort(es .- sum(es) / 4)
+end
 
 """
     analytic_parameters(x, ζ, ramp, t)
@@ -48,6 +57,7 @@ In the limit Δ_1 = 0, Λ = λ and H = η.
 """
 function analytic_parameters(λ, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
+    Δ = sqrt(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     θ = atan(Δ23, Δs[1])
 
@@ -59,9 +69,9 @@ function analytic_parameters(λ, ζ, ramp, t)
 
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
-    Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
+    Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ)
     ε = ηtilde * α / μ
-    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε)
+    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ)
 end
 
 function analytic_parameters_midpoint(ζ, ramp, totalparity)
@@ -71,9 +81,9 @@ function analytic_parameters_midpoint(ζ, ramp, totalparity)
 end
 
 @testitem "Zero energy solution" begin
-    T = 1e3
+    T = 1e1
     k = 10
-    ramp = RampProtocol([0, 0, 0], [1, 1, 1], T, k)
+    ramp = RampProtocol(0, 1, T, k)
     ζ = 0.5
     for totalparity in (-1, 1)
         @test MajoranaBraiding.find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity) ≈ find_zero_energy_from_analytics(ζ, ramp, T / 2, 0.0, totalparity)
@@ -86,6 +96,20 @@ end
     N = length(γ.fermion_basis)
     mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
     U0 = mtype(I(2^(N - 1)))
+
+    T = 10
+    k = 1
+    ramp = RampProtocol(0, 1, T, k)
+    λ = 0.2
+    corr = SimpleCorrection(λ)
+    totalparity = -1
+    P = parity_operators(γ, totalparity, mtype)
+    ζ = 0.5
+    p = (ramp, (0, 0, 0), ζ, corr, P)
+
+    spectrum = stack(map(t -> eigvals(-totalparity * ham_with_corrections(p, t)), ts))' # Why the totalparity here?
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, ζ, ramp, t, totalparity), ts))'
+    @test spectrum ≈ analytic_spectrum
 
     param_dict = Dict(
         :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
@@ -102,13 +126,25 @@ end
         :totalparity => 1
     )
     prob = setup_problem(param_dict)
-    ts = range(0, 2prob[:T], 1000)
+    ts = range(0, 2prob[:T], 10)
+    λ = 0
+    spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t)), ts))'
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:ζ], prob[:ramp], t, prob[:totalparity]), ts))'
+    @test norm(spectrum - analytic_spectrum) < 1e-10
+
+    param_dict[:totalparity] = -1
+    prob = setup_problem(param_dict)
+    spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t)), ts))'
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:ζ], prob[:ramp], t, prob[:totalparity]), ts))'
+    @test spectrum ≈ analytic_spectrum
+
+
     energy_gaps = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], ts)
     energy_gaps2 = map(t -> diff(eigvals(-1im * prob[:op](prob[:u0], prob[:p], t)))[1], ts)
-    energy_gaps_analytic = [MajoranaBraiding.energy_splitting(0, prob[:ζ], prob[:ramp], t, prob[:totalparity]) for t in ts]
+    energy_gaps_analytic = [2MajoranaBraiding.analytic_parameters(0, prob[:ζ], prob[:ramp], t).ε for t in ts]
     plot(energy_gaps)
     plot!(energy_gaps2)
-    plot!(2energy_gaps_analytic)
+    plot!(energy_gaps_analytic)
 
     param_dict = Dict(
         :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
