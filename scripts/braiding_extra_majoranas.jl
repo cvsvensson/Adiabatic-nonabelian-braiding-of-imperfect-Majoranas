@@ -25,7 +25,7 @@ param_dict = Dict(
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
-    :k => 2e1, #Determines the slope of the ramp
+    :k => 1e1, #Determines the slope of the ramp
     :steps => 2000, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
@@ -93,6 +93,7 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 100
+gridpoints = 100
 omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_majorana_fidelity = zeros(Float64, gridpoints)
 single_braid_lucky_fidelity = zeros(Float64, gridpoints)
@@ -109,12 +110,13 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :ζ => tan(omega),
         :ϵs => (0, 0, 0),
-        :T => 3e2,
+        :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 4000,
-        :correction => InterpolatedExactSimpleCorrection(),
+        :totalparity => totalparity,
+        :correction => InterpolatedExactSimpleCorrection(totalparity),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),

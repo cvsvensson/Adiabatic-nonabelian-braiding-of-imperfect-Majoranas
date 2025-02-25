@@ -85,14 +85,11 @@ end
 
 single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
 function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T / 2, totalparity; opt_kwargs...)
-    η = ζ^2
-    ϕ = atan(η)
-    θ_μ = -totalparity * 1 / 2 * atan(2 * sin(ϕ) * tan(ϕ) / (1 + sin(ϕ)^2 - tan(ϕ)^2))
+    λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs...)
+    θ_μ = -1/2* atan(2 * λ * η/(1 + λ^2 - η^2) )
     ν = sin(θ_μ)
-    θ_α = -1 * atan(-tan(ϕ) * tan(θ_μ) + totalparity * sin(ϕ))
+    θ_α = -1*atan(-η * tan(θ_μ) + λ )
     α = cos(θ_α)
-
     return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
