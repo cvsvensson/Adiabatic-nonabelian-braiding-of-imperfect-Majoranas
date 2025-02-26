@@ -84,6 +84,7 @@ function single_braid_gate_kato(P, ζ, ramp, T, totalparity; opt_kwargs...)
 end
 
 single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+single_braid_gate_analytical(P, ζ::Tuple, ramp, T, totalparity; opt_kwargs...) = single_braid_gate_analytical(P, ζ[1], ramp, T, totalparity; opt_kwargs...)
 function single_braid_gate_analytical(P, ζ, ramp, T, totalparity; opt_kwargs...)
     λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; opt_kwargs...)
     η = ζ^2
@@ -107,6 +108,9 @@ function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
 end
 
 zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function zero_energy_analytic_parameters(ζ::Tuple, ramp, t, totalparity; kwargs...)
+    zero_energy_analytic_parameters(ζ[1], ramp, t, totalparity; kwargs...)
+end
 function zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...)
     initial = 0.0
     result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)

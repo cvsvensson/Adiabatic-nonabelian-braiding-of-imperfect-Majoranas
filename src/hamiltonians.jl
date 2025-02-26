@@ -113,8 +113,13 @@ function weak_energy_correction_term(ham, basis; alg=Majoranas.WM_BACKSLASH())
     return Majoranas.coeffs_to_matrix(basis, sol)
 end
 
+struct OptimizedSimpleCorrection <: AbstractCorrection end
 
-function optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
+function setup_correction(::OptimizedSimpleCorrection, d::Dict)
+    return optimized_simple_correction(d[:ramp], d[:ϵs], d[:ζ], d[:P], d[:ts])
+end
+function optimized_simple_correction(ramp, ϵs, ζs, P, ts; alg=BFGS())
+    H = ham_with_corrections
     results = Float64[]
     function cost_function(x, t)
         vals = eigvals(H((ramp, ϵs, ζs, SimpleCorrection(x), P), t))

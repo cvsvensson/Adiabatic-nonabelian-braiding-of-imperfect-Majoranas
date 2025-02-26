@@ -85,7 +85,7 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 50
+gridpoints = 40
 omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_majorana_fidelity = zeros(Float64, gridpoints)
 single_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
@@ -100,14 +100,15 @@ fidelities = zeros(Float64, gridpoints)
 fidelity_numerics_analytic = zeros(Float64, gridpoints)
 @time @showprogress @threads for (idx, omega) in collect(enumerate(omegas))
     local_dict = Dict(
-        :ζ => tan(omega),
+        :ζ => tan.((omega, omega, 1.2omega)),
         :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
-        :steps => 4000,
-        :correction => InterpolatedExactSimpleCorrection(),
+        :steps => 2000,
+        # :correction => InterpolatedExactSimpleCorrection(),
+        :correction => OptimizedSimpleCorrection(),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
@@ -118,7 +119,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
-    sol = solve(prob[:odeprob], Tsit5(), abstol=1e-8, reltol=1e-8, saveat=[0, T, 2T])
+    sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
     proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     majorana_single_braid = majorana_exchange(-prob[:P][:L, :R])
     single_kato = single_braid_gate_kato(prob)
