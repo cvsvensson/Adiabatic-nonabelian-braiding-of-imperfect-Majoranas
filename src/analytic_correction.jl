@@ -54,7 +54,12 @@ function analytic_energy_spectrum(λ, ζ, ramp, t, totalparity)
     2Δ * sort(es .- sum(es) / 4)
 end
 
-effective_ζ(ζ::Tuple) = (sqrt(ζ[1] * ζ[2]) + sqrt(ζ[1] * ζ[3])) / 2
+# effective_ζ(ζ::Tuple) = (ζ[2] + ζ[3]) / 2 # bad because ζ[1] also effects the result
+# effective_ζ(ζ::Tuple) = (ζ[1] +ζ[2] +ζ[3])/3 #very bad
+# effective_ζ(ζ::Tuple) = (ζ[1]ζ[2]ζ[3])^(1/3) #not good
+# effective_ζ(ζ::Tuple) = (ζ[1] + sqrt(ζ[2]ζ[3])) / 2 # meh
+# effective_ζ(ζ::Tuple) = sqrt(ζ[1] * (ζ[2] + ζ[3]) / 2)  #nice
+effective_ζ(ζ::Tuple) = (sqrt(ζ[1] * ζ[2]) + sqrt(ζ[1] * ζ[3])) / 2 #best so far
 """
     analytic_parameters(x, ζ, ramp, t)
 

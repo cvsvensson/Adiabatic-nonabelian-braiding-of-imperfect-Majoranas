@@ -150,14 +150,13 @@ function optimized_independent_simple_correction(ramp, ϵs, ζs, P, ts, T; penal
     # define a cost function that x as a vector instead of a scalar
     function cost_function(x::Vector, t)
         ham = Hermitian(H((ramp, ϵs, ζs, IndependentSimpleCorrection(x), P), t))
-        vals = try
-            eigvals(ham)
-        catch
-            display(ham)
-            display(x)
-            display(middle)
-            display(middle.minimizer)
-        end
+        vals = eigvals(ham)
+        # catch
+        #     display(ham)
+        #     display(x)
+        #     display(middle)
+        #     display(middle.minimizer)
+        # end
         return vals[2] - vals[1]
     end
     # abs_err = 1e-10
