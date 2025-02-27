@@ -37,21 +37,21 @@ SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
 (corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[:L, :L̃] + P[:R, :R̃])
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
-struct IndependentSimpleCorrections{T} <: AbstractCorrection
+struct IndependentSimpleCorrection{T} <: AbstractCorrection
     scaling::T
 end
-function IndependentSimpleCorrections(scaling1, scaling2)
+function IndependentSimpleCorrection(scaling1, scaling2)
     newscaling1 = _process_constant_scaling(scaling1)
     newscaling2 = _process_constant_scaling(scaling2)
-    IndependentSimpleCorrections(t -> (newscaling1(t), newscaling2(t)))
+    IndependentSimpleCorrection(t -> (newscaling1(t), newscaling2(t)))
 end
-IndependentSimpleCorrections(scalings::Vector{<:Number}) = length(scalings) == 2 ? IndependentSimpleCorrections(scalings...) : error("scalings must be a vector of length 2")
-setup_correction(corr::IndependentSimpleCorrections, ::Dict) = corr
+IndependentSimpleCorrection(scalings::Vector{<:Number}) = length(scalings) == 2 ? IndependentSimpleCorrection(scalings...) : error("scalings must be a vector of length 2")
+setup_correction(corr::IndependentSimpleCorrection, ::Dict) = corr
 
 _process_constant_scaling(scaling::Number) = t -> scaling
 _process_constant_scaling(scaling) = scaling
 
-function (corr::IndependentSimpleCorrections)(t, Δs, ζs, P, ham)
+function (corr::IndependentSimpleCorrection)(t, Δs, ζs, P, ham)
     Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     scaling = corr.scaling(t)
     scaling[1] * Δ * P[:L, :L̃] + scaling[2] * Δ * P[:R, :R̃]
@@ -127,27 +127,61 @@ function optimized_simple_correction(ramp, ϵs, ζs, P, ts; alg=BFGS())
     end
     for t in ts
         f(x) = cost_function(only(x), t)
-        initial = length(results) > 0 ? results[end] : 1.0
+        initial = length(results) > 0 ? results[end] : 0.0
         result = optimize(f, [initial], alg, Optim.Options(time_limit=1 / length(ts)))
+        println("result = ", result)
         push!(results, only(result.minimizer))
     end
     return SimpleCorrection(linear_interpolation(ts, results))
 end
 
-function optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
+struct OptimizedIndependentSimpleCorrection <: AbstractCorrection
+    maxtime::Float64
+    penalty_factor::Float64
+end
+
+function setup_correction(corr::OptimizedIndependentSimpleCorrection, d::Dict)
+    return optimized_independent_simple_correction(d[:ramp], d[:ϵs], d[:ζ], d[:P], d[:ts], d[:T]; penalty_factor=corr.penalty_factor, maxtime=corr.maxtime)
+end
+
+function optimized_independent_simple_correction(ramp, ϵs, ζs, P, ts, T; penalty_factor, maxtime, alg=Fminbox(NelderMead()))
+    H = ham_with_corrections
     results = Vector{Float64}[]
     # define a cost function that x as a vector instead of a scalar
     function cost_function(x::Vector, t)
-        vals = eigvals(H((ramp, ϵs, ζs, IndependentSimpleCorrections(x), P), t))
+        ham = Hermitian(H((ramp, ϵs, ζs, IndependentSimpleCorrection(x), P), t))
+        vals = try
+            eigvals(ham)
+        catch
+            display(ham)
+            display(x)
+            display(middle)
+            display(middle.minimizer)
+        end
         return vals[2] - vals[1]
     end
-    abs_err = 1e-10
-    rel_err = 1e-10
+    # abs_err = 1e-10
+    # rel_err = 1e-10
+    lambda_limit = 20
+    middle = optimize(x -> cost_function(x, T / 2), lambda_limit .* [-1, -1], lambda_limit * [1, 1], [0.0, 0.0], alg, Optim.Options(time_limit=maxtime, f_abstol=1e-14, f_reltol=1e-14))
+    middle_result = iszero(middle.minimizer) ? [1, 1] / sqrt(2) : middle.minimizer / norm(middle.minimizer)
+    # initial = [0.0]
     for t in ts
-        initial = length(results) > 0 ? results[end] : [0.0, 0.0]
-        result = optimize(x -> cost_function(x, t), initial, alg,
-            Optim.Options(time_limit=1 / length(ts)))#, Optim.Options(g_tol=abs_err, x_tol=rel_err))
-        push!(results, result.minimizer)
+        # guess = find_zero_energy_from_analytics(ζs, ramp, t, 0.0, totalparity; atol=1e-6, rtol=1e-6)
+        #[guess, guess]#
+        # initial = length(results) > 0 ? results[end] : [0.0, 0.0]
+        initial = length(results) > 0 ? norm(results[end]) : 0.0
+        # result = optimize(x -> cost_function(only(x) .* middle_result, t), initial, alg,
+        result = optimize(x -> cost_function(x .* middle_result, t) + penalty_factor * abs2(initial - x), -40 * norm(middle_result), 40 * norm(middle_result), Brent(); abs_tol=1e-14, rel_tol=1e-14, time_limit=maxtime / length(ts))
+
+        # result = optimize(x -> cost_function(x, t), initial, alg,
+        # Optim.Options(time_limit=maxtime / length(ts)))#, Optim.Options(g_tol=abs_err, x_tol=rel_err))
+        # push!(results, result.minimizer)
+        push!(results, only(result.minimizer) .* middle_result)
     end
-    return IndependentSimpleCorrections(linear_interpolation(ts, results))
+    # println(cost_function(results[1], ts[1]))
+    println("__")
+    findmax([cost_function(res, t) for (res, t) in zip(results, ts)]) |> display
+    # println(maximum(cost_function(res, t)) for (res, t) in zip(results, ts))
+    return IndependentSimpleCorrection(linear_interpolation(ts, results))
 end

@@ -16,13 +16,13 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwarg
     end
     return SimpleCorrection(linear_interpolation(ts, results, extrapolation_bc=Periodic()))
 end
-find_zero_energy_from_analytics_midpoint(ζ::Tuple, ramp, totalparity; kwargs...) = find_zero_energy_from_analytics_midpoint(ζ[1], ramp, totalparity; kwargs...)
+find_zero_energy_from_analytics_midpoint(ζ::Tuple, ramp, totalparity; kwargs...) = find_zero_energy_from_analytics_midpoint(effective_ζ(ζ), ramp, totalparity; kwargs...)
 function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs...)
     η = ζ^2
     ϕ = atan(η)
     λ = totalparity * sin(ϕ)
 end
-find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(ζ[1], ramp, t, initial, totalparity; kwargs...)
+find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_ζ(ζ), ramp, t, initial, totalparity; kwargs...)
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
     λ = try
         find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, kwargs...)
@@ -54,6 +54,7 @@ function analytic_energy_spectrum(λ, ζ, ramp, t, totalparity)
     2Δ * sort(es .- sum(es) / 4)
 end
 
+effective_ζ(ζ::Tuple) = (sqrt(ζ[1] * ζ[2]) + sqrt(ζ[1] * ζ[3])) / 2
 """
     analytic_parameters(x, ζ, ramp, t)
 
@@ -61,7 +62,7 @@ Calculate the energy parameters H and Λ for the system.
 Λ (capital λ) and H (capital η) are the generalizations of λ and η for Δ_1 > 0.
 In the limit Δ_1 = 0, Λ = λ and H = η.
 """
-analytic_parameters(λ, ζ::Tuple, ramp, t) = analytic_parameters(λ, ζ[1], ramp, t)
+analytic_parameters(λ, ζ::Tuple, ramp, t) = analytic_parameters(λ, effective_ζ(ζ), ramp, t)
 function analytic_parameters(λ, ζ, ramp, t)
     Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
     Δ = sqrt(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
