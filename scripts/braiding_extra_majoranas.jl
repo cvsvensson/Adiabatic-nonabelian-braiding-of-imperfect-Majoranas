@@ -20,23 +20,27 @@ U0 = mtype(I(2^(N - 1)))
 
 ##
 param_dict = Dict(
-    :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
+    :ζ => (0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :ϵs => (0, 0, 0), #Dot energy levels
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
     :k => 1e1, #Determines the slope of the ramp
-    :steps => 2000, #Number of timesteps for interpolations
-    :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+    :steps => 100, #Number of timesteps for interpolations
+    # :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+    # :correction => OptimizedSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+    :correction => OptimizedIndependentSimpleCorrection(1, 0), #Different corrections are available. This is the most relevant one for the paper
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     :γ => γ, #Majorana basis
     :u0 => U0, #Initial state. Use U0 for the identity matrix.
     :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
-    :totalparity => -1
+    :totalparity => 1
 )
 
 ## Solve the system
 prob = setup_problem(param_dict);
+stack([prob[:correction].scaling[t] for t in prob[:ts]])' |> plot
+
 @time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
 ##
@@ -85,8 +89,8 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 40
-omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
+gridpoints = 20
+deltas = sqrt.(range(0, 2(pi / 4)^2, gridpoints)) #range(0, 1, length=gridpoints)
 single_braid_majorana_fidelity = zeros(Float64, gridpoints)
 single_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
@@ -98,17 +102,19 @@ analytical_angles = zeros(Float64, gridpoints)
 analytical_fidelity = zeros(Float64, gridpoints)
 fidelities = zeros(Float64, gridpoints)
 fidelity_numerics_analytic = zeros(Float64, gridpoints)
-@time @showprogress @threads for (idx, omega) in collect(enumerate(omegas))
+numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
+interpolations = []
+@time @showprogress @threads for (idx, delta) in collect(enumerate(deltas))
     local_dict = Dict(
-        :ζ => tan.((omega, omega, 1.2omega)),
+        :ζ => tan(delta) .* (1, 0.7, 1),
         :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
-        :steps => 2000,
+        :steps => 200,
         # :correction => InterpolatedExactSimpleCorrection(),
-        :correction => OptimizedSimpleCorrection(),
+        :correction => OptimizedIndependentSimpleCorrection(20, 1e-7),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
@@ -136,25 +142,29 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     double_braid_majorana_fidelity[idx] = gate_fidelity(majorana_double_braid, double_braid_result, proj)
     double_braid_kato_fidelity[idx] = gate_fidelity(double_kato, double_braid_result, proj)
     double_braid_analytical_gate_fidelity[idx] = gate_fidelity(double_gate_analytical, majorana_double_braid, proj)
-
+    numerical_to_effective_analytical_fidelity[idx] = gate_fidelity(double_gate_analytical, double_braid_result, proj)
+    push!(interpolations, stack([prob[:correction].scaling[t] for t in prob[:ts]])')
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
-plot(omegas / (pi / 4), double_braid_majorana_fidelity, label="", lw=2)
-plot!(omegas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot(interpolations[11:12])
+##
+plot(deltas / (pi / 4), double_braid_majorana_fidelity, label="", lw=2, marker=true, ylims=(-0.01, 1.01))
+plot!(deltas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot!(deltas / (pi / 4), numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to effective zeta analytical gate")
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
-# plot!(omegas, single_braid_majorana_fidelity, label="single_braid_majorana_fidelity", xlabel="ω", lw=2)
-plot(omegas, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
-plot(omegas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
-plot!(omegas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
-plot!(omegas, analytical_fidelity, label="analytical majorana similarity", lw=2)
-# plot!(omegas, fidelity_numerics_analytic, label="fidelity_numerics_analytic", lw=2)
-plot!(omegas, single_braid_analytical_gate_fidelity, label="single_braid_analytical_gate_fidelity", lw=2)
-plot!(omegas, double_braid_analytical_gate_fidelity, label="double_braid_analytical_gate_fidelity", lw=2)
-# plot!(omegas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ω", lw=2, frame=:box)
+# plot!(deltas, single_braid_majorana_fidelity, label="single_braid_majorana_fidelity", xlabel="ω", lw=2)
+plot(deltas, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
+plot(deltas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
+plot!(deltas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
+plot!(deltas, analytical_fidelity, label="analytical majorana similarity", lw=2)
+# plot!(deltas, fidelity_numerics_analytic, label="fidelity_numerics_analytic", lw=2)
+plot!(deltas, single_braid_analytical_gate_fidelity, label="single_braid_analytical_gate_fidelity", lw=2)
+plot!(deltas, double_braid_analytical_gate_fidelity, label="double_braid_analytical_gate_fidelity", lw=2)
+# plot!(deltas, 1 .- (angles .- analytical_angles) .^ 2, label="1- (angles - analytical_angles)^2", xlabel="ω", lw=2, frame=:box)
 ## plot angles 
-plot(omegas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
+plot(deltas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
 ##
 ## Compare hamiltonian from M to the one from the diagonal_majoranas function at some time
 param_dict = Dict(
