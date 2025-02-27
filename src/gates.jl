@@ -83,15 +83,16 @@ function single_braid_gate_kato(P, ζ, ramp, T, totalparity; opt_kwargs...)
     foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
 end
 
-single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
-single_braid_gate_analytical(P, ζ::Tuple, ramp, T, totalparity; opt_kwargs...) = single_braid_gate_analytical(P, effective_ζ(ζ), ramp, T, totalparity; opt_kwargs...)
-function single_braid_gate_analytical(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; opt_kwargs...)
-    η = ζ^2
-    θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
-    ν = sin(θ_μ)
-    θ_α = -1 * atan(-η * tan(θ_μ) + λ)
-    α = cos(θ_α)
+single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:ramp], d[:totalparity])
+single_braid_gate_analytical(P, ζ::Tuple, ramp, totalparity) = single_braid_gate_analytical(P, effective_ζ(ζ), ramp, totalparity)
+function single_braid_gate_analytical(P, ζ, ramp, totalparity; opt_kwargs...)
+    # λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; opt_kwargs...)
+    # η = ζ^2
+    # θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
+    # ν = sin(θ_μ)
+    # θ_α = -1 * atan(-η * tan(θ_μ) + λ)
+    # α = cos(θ_α)
+    (; α, ν) = analytic_parameters_midpoint(ζ, totalparity)
     return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
 end
 function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
