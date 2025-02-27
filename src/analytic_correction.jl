@@ -18,9 +18,10 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwarg
 end
 find_zero_energy_from_analytics_midpoint(ζ::Tuple, ramp, totalparity; kwargs...) = find_zero_energy_from_analytics_midpoint(effective_ζ(ζ), ramp, totalparity; kwargs...)
 function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs...)
-    η = ζ^2
-    ϕ = atan(η)
-    λ = totalparity * sin(ϕ)
+    # η = ζ^2
+    # ϕ = atan(η)
+    # λ = totalparity * sin(ϕ)
+    λ = totalparity * ζ^2 / sqrt(ζ^4 + 1)
 end
 find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_ζ(ζ), ramp, t, initial, totalparity; kwargs...)
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
@@ -82,17 +83,28 @@ function analytic_parameters(λ, ζ, ramp, t)
 
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
+    # x = ηtilde * tan(θ_μ) - λtilde
+    # β, α = x / sqrt(1 + x^2), 1 / sqrt(1 + x^2)
     Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ)
 
     ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ
-    # rand() > 0.1 && println(β * ν + λtilde * α * ν + ηtilde * α * μ - ηtilde * α / μ )
-    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, Δ23, ϕ, η)
+
+    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, Δ23, ϕ, η, λ)
+end
+function analytic_parameters_midpoint2(ζ, totalparity, ramp, T)
+    λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
+    analytic_parameters(λ, ζ, ramp, T / 2)
 end
 
-function analytic_parameters_midpoint(ζ, ramp, totalparity)
+function analytic_parameters_midpoint(ζ, totalparity)
     ## TODO: Implement this function
     #λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
-    #analytic_parameters_midpoint(λ, ζ, ramp)
+    η = ζ^2
+    λ = totalparity * η / sqrt(1 + η^2)
+    θ = -1 / 2 * atan(2λ * η, 1 + λ^2 - η^2)
+    α = 1 / sqrt(1 + (λ - η * tan(θ))^2)
+    ν = sin(θ)
+    (; ν, α, η, λ)
 end
 
 @testitem "Zero energy solution" begin
