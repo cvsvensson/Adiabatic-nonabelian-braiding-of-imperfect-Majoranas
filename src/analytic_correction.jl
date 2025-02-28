@@ -25,7 +25,7 @@ function find_zero_energy_from_analytics(ζ, ramp, t, initial=0.0, totalparity=1
 
     η = ζ^2
     ϕ = atan(η)
-    λ = totalparity * sin(ϕ)
+    λ = -totalparity * sin(ϕ)
     #result = λ                 ## Solution in the middle of the protocol
     return result
 end
@@ -39,8 +39,8 @@ Yes it works only when all ζs are the same.
 function energy_splitting(x, ζ, ramp, t, totalparity=1)
     (; η_gen, λ_gen, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(x, ζ, ramp, t)
 
-    Δϵ = β * ν + η_gen * μ * α + λ_gen * α * ν - x * totalparity
-    Δϵ = η_gen * α - totalparity * x * μ
+    Δϵ = β * ν + η_gen * μ * α + λ_gen * α * ν + x * totalparity
+    Δϵ = η_gen * α + totalparity * x * μ
     return Δϵ
 end
 

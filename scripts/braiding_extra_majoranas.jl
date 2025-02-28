@@ -166,8 +166,8 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 100
-omegas = range(0, pi / 4, gridpoints) #range(0, 1, length=gridpoints)
+gridpoints = 400
+omegas = range(0, 1*pi / 4, gridpoints) #range(0, 1, length=gridpoints)
 single_braid_ideal_fidelity = zeros(Float64, gridpoints)
 single_braid_lucky_fidelity = zeros(Float64, gridpoints)
 single_braid_kato_fidelity = zeros(Float64, gridpoints)
@@ -183,7 +183,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :ζ => tan(omega),
         :ϵs => (0, 0, 0),
-        :T => 1e4,
+        :T => 1e3,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
@@ -218,10 +218,10 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     angles[idx] = braid_gate_best_angle(single_braid_result, P, proj)[1]
     fidelities[idx] = braid_gate_best_angle(single_braid_result, P, proj)[2]
     single_braid_ideal_fidelity[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * single_braid_result * proj)
-    single_braid_kato_fidelity[idx] = gate_fidelity(proj * single_braid_gate_kato_ * proj, proj * single_braid_result * proj)
+    single_braid_kato_fidelity[idx] = gate_fidelity(proj * single_braid_gate_kato_ * proj, proj * single_braid_gate_ideal * proj)
     single_braid_lucky_fidelity[idx] = gate_fidelity(proj * single_braid_lucky_guess * proj, proj * single_braid_gate_ideal * proj)
     double_braid_ideal_fidelity[idx] = gate_fidelity(proj * double_braid_gate_ideal * proj, proj * double_braid_result * proj)
-    double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_result * proj)
+    double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_gate_ideal * proj)
     double_braid_lucky_fidelity[idx] = gate_fidelity(proj * double_braid_lucky_guess * proj, proj * double_braid_gate_ideal * proj)
 
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
@@ -229,7 +229,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
 end
 ##
 # Take away label from the plot
-plot(omegas/(pi/4), double_braid_ideal_fidelity, label="", lw=2)
+plot(omegas/(pi/4), double_braid_ideal_fidelity-double_braid_lucky_fidelity, label="", lw=2)
 plot!(omegas/(pi/4), double_braid_lucky_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
@@ -271,7 +271,7 @@ hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]
 projs = [eigen(Matrix(1im * ham)).vectors[:, 1:2] for ham in hams]
 projs = [p * p' for p in projs]
 
-if totalparity == -1
+if totalparity == 1
     pars = [sol(t)' * (1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] * sol(t)) for t in prob[:ts]]
     P = [I - 1im * prod(diagonal_majoranas(prob, t)[1:2])[5:8, 5:8] for t in prob[:ts]] / 2
 else
