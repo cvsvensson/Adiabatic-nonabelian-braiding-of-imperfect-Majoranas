@@ -20,16 +20,16 @@ U0 = mtype(I(2^(N - 1)))
 
 ##
 param_dict = Dict(
-    :ζ => (0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
+    :ζ => 1.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :ϵs => (0, 0, 0), #Dot energy levels
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
     :k => 1e1, #Determines the slope of the ramp
-    :steps => 100, #Number of timesteps for interpolations
-    # :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
+    :steps => 200, #Number of timesteps for interpolations
+    :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
     # :correction => OptimizedSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
-    :correction => OptimizedIndependentSimpleCorrection(1, 0), #Different corrections are available. This is the most relevant one for the paper
+    # :correction => OptimizedIndependentSimpleCorrection(1, 0), #Different corrections are available. This is the most relevant one for the paper
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     :γ => γ, #Majorana basis
     :u0 => U0, #Initial state. Use U0 for the identity matrix.
@@ -40,7 +40,7 @@ param_dict = Dict(
 ## Solve the system
 prob = setup_problem(param_dict);
 stack([prob[:correction].scaling[t] for t in prob[:ts]])' |> plot
-
+##
 @time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
 ##
@@ -106,15 +106,15 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
 interpolations = []
 @time @showprogress @threads for (idx, delta) in collect(enumerate(deltas))
     local_dict = Dict(
-        :ζ => tan(delta) .* (1, 0.7, 1),
+        :ζ => tan(delta) .* (1, 1, 1),
         :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
-        :Δmin => 1e-10 * [2, 1 / 3, 1],
+        :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 200,
-        # :correction => InterpolatedExactSimpleCorrection(),
-        :correction => OptimizedIndependentSimpleCorrection(20, 1e-7),
+        :correction => InterpolatedExactSimpleCorrection(),
+        # :correction => OptimizedIndependentSimpleCorrection(20, 1e-7),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
@@ -132,7 +132,7 @@ interpolations = []
     single_gate_analytical = single_braid_gate_analytical(prob)
     double_kato = single_braid_gate_kato(prob)^2
     majorana_double_braid = majorana_single_braid^2
-    double_gate_analytical = single_braid_gate_analytical(prob)^2
+    double_gate_analytical = single_gate_analytical^2
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
     analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
@@ -147,11 +147,9 @@ interpolations = []
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
-plot(interpolations[11:12])
-##
 plot(deltas / (pi / 4), double_braid_majorana_fidelity, label="", lw=2, marker=true, ylims=(-0.01, 1.01))
 plot!(deltas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
-plot!(deltas / (pi / 4), numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to effective zeta analytical gate")
+plot!(deltas / (pi / 4), numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to analytical gate", marker=true)
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
 # plot!(deltas, single_braid_majorana_fidelity, label="single_braid_majorana_fidelity", xlabel="ω", lw=2)

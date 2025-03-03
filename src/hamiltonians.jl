@@ -179,8 +179,8 @@ function optimized_independent_simple_correction(ramp, ϵs, ζs, P, ts, T; penal
         push!(results, only(result.minimizer) .* middle_result)
     end
     # println(cost_function(results[1], ts[1]))
-    println("__")
-    findmax([cost_function(res, t) for (res, t) in zip(results, ts)]) |> display
+    # println("__")
+    # findmax([cost_function(res, t) for (res, t) in zip(results, ts)]) |> display
     # println(maximum(cost_function(res, t)) for (res, t) in zip(results, ts))
     return IndependentSimpleCorrection(linear_interpolation(ts, results))
 end

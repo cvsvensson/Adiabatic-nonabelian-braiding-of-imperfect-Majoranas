@@ -97,11 +97,11 @@ function analytic_parameters_midpoint2(ζ, totalparity, ramp, T)
 end
 
 function analytic_parameters_midpoint(ζ, totalparity)
-    ## TODO: Implement this function
-    #λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
     η = ζ^2
     λ = totalparity * η / sqrt(1 + η^2)
     θ = -1 / 2 * atan(2λ * η, 1 + λ^2 - η^2)
+    # α = cos(atan(-η * tan(θ) + λ))
+    # α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
     α = 1 / sqrt(1 + (λ - η * tan(θ))^2)
     ν = sin(θ)
     (; ν, α, η, λ)
