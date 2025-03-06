@@ -18,7 +18,7 @@ mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
 P = parity_operators(γ, totalparity, mtype)
 # H = ham_with_corrections
 ## Initial state and identity matrix
-u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
+u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] - P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
 U0 = mtype(Matrix{ComplexF64}(I, size(u0, 1), size(u0, 1)))
 
 ##
@@ -183,7 +183,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :ζ => tan(omega),
         :ϵs => (0, 0, 0),
-        :T => 1e3,
+        :T => 5e2,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
@@ -191,7 +191,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         :totalparity => totalparity,
         :correction => InterpolatedExactSimpleCorrection(totalparity),
         # :correction => EigenEnergyCorrection(),
-        # :correction => NoCorrection(),
+        :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :P => P,
@@ -214,7 +214,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
 
     single_braid_result = sol(T)
     double_braid_result = sol(2T)
-    analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
+    analytical_angles[idx] = single_braid_effective_rotation_angle(prob)
     angles[idx] = braid_gate_best_angle(single_braid_result, P, proj)[1]
     fidelities[idx] = braid_gate_best_angle(single_braid_result, P, proj)[2]
     single_braid_ideal_fidelity[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * single_braid_result * proj)
@@ -224,13 +224,16 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     double_braid_kato_fidelity[idx] = gate_fidelity(proj * double_braid_gate_kato * proj, proj * double_braid_gate_ideal * proj)
     double_braid_lucky_fidelity[idx] = gate_fidelity(proj * double_braid_lucky_guess * proj, proj * double_braid_gate_ideal * proj)
 
-    analytical_fidelity[idx] = analytical_gate_fidelity(prob)
+    analytical_fidelity[idx] = double_braid_analytical_gate_fidelity(prob)
     fidelity_numerics_analytic[idx] = gate_fidelity(proj * single_braid_gate_ideal * proj, proj * MajoranaBraiding.single_braid_gate_fit(angles[idx], P) * proj)
 end
 ##
 # Take away label from the plot
-plot(omegas/(pi/4), double_braid_ideal_fidelity-double_braid_lucky_fidelity, label="", lw=2)
-plot!(omegas/(pi/4), double_braid_lucky_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot(omegas/(pi/4), double_braid_ideal_fidelity, label="", lw=2)
+plot!(omegas/(pi/4), analytical_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot!(omegas/(pi/4), double_braid_lucky_fidelity, lw=2, label="")
+##
+plot(omegas/(pi/4), 2*analytical_angles/(pi/2), label="ϕ_eff", lw=2, frame=:box)
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
 # plot!(omegas, single_braid_ideal_fidelity, label="single_braid_ideal_fidelity", xlabel="ω", lw=2)
