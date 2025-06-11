@@ -16,14 +16,14 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwarg
     end
     return SimpleCorrection(linear_interpolation(ts, results, extrapolation_bc=Periodic()))
 end
-find_zero_energy_from_analytics_midpoint(ζ::Tuple, ramp, totalparity; kwargs...) = find_zero_energy_from_analytics_midpoint(effective_ζ(ζ), ramp, totalparity; kwargs...)
+find_zero_energy_from_analytics_midpoint(ζ::Tuple, ramp, totalparity; kwargs...) = find_zero_energy_from_analytics_midpoint(effective_ζ_by_η(ζ), ramp, totalparity; kwargs...)
 function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs...)
     # η = ζ^2
     # ϕ = atan(η)
     # λ = totalparity * sin(ϕ)
     λ = totalparity * ζ^2 / sqrt(ζ^4 + 1)
 end
-find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_ζ(ζ), ramp, t, initial, totalparity; kwargs...)
+find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_ζ_by_η(ζ), ramp, t, initial, totalparity; kwargs...)
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
     λ = try
         find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, kwargs...)
@@ -60,7 +60,14 @@ end
 # effective_ζ(ζ::Tuple) = (ζ[1]ζ[2]ζ[3])^(1/3) #not good
 # effective_ζ(ζ::Tuple) = (ζ[1] + sqrt(ζ[2]ζ[3])) / 2 # meh
 # effective_ζ(ζ::Tuple) = sqrt(ζ[1] * (ζ[2] + ζ[3]) / 2)  #nice
-effective_ζ(ζ::Tuple) = (sqrt(ζ[1] * ζ[2]) + sqrt(ζ[1] * ζ[3])) / 2 #best so far
+# effective_ζ(ζ::Tuple) = (sqrt(ζ[1] * ζ[2]) + sqrt(ζ[1] * ζ[3])) / 2 #best so far
+function effective_ζ_by_η(ζ::Tuple)
+    ηs = map(x -> x^2, ζ)
+    # return (sqrt(ηs[1]) * (sqrt(ηs[2]) + sqrt(ηs[3])) / 2) |> sqrt
+    # return (sqrt(ηs[1]) * sqrt((ηs[2] + ηs[3]) / 2)) |> sqrt
+    # return (sqrt(ηs[1]) * (ηs[2] * ηs[3])^(1 / 4)) |> sqrt
+    return sqrt(ηs[1] * sqrt(ηs[2] * ηs[3])) |> sqrt # awesome
+end
 """
     analytic_parameters(x, ζ, ramp, t)
 
@@ -68,9 +75,9 @@ Calculate the energy parameters H and Λ for the system.
 Λ (capital λ) and H (capital η) are the generalizations of λ and η for Δ_1 > 0.
 In the limit Δ_1 = 0, Λ = λ and H = η.
 """
-analytic_parameters(λ, ζ::Tuple, ramp, t) = analytic_parameters(λ, effective_ζ(ζ), ramp, t)
+analytic_parameters(λ, ζ::Tuple, ramp, t) = analytic_parameters(λ, effective_ζ_by_η(ζ), ramp, t)
 function analytic_parameters(λ, ζ, ramp, t)
-    Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
+    Δs = ramp(t) ./ (1, (1 + ζ^2), (1 + ζ^2)) # divide to normalize the hamiltonian
     Δ = sqrt(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     θ = atan(Δ23, Δs[1])

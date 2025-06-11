@@ -84,7 +84,7 @@ function single_braid_gate_kato(P, ζ, ramp, T, totalparity; opt_kwargs...)
 end
 
 single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:ramp], d[:totalparity])
-single_braid_gate_analytical(P, ζ::Tuple, ramp, totalparity) = single_braid_gate_analytical(P, effective_ζ(ζ), ramp, totalparity)
+single_braid_gate_analytical(P, ζ::Tuple, ramp, totalparity) = single_braid_gate_analytical(P, effective_ζ_by_η(ζ), ramp, totalparity)
 function single_braid_gate_analytical(P, ζ, ramp, totalparity; opt_kwargs...)
     # λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; opt_kwargs...)
     # η = ζ^2
@@ -110,7 +110,7 @@ end
 
 zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
 function zero_energy_analytic_parameters(ζ::Tuple, ramp, t, totalparity; kwargs...)
-    zero_energy_analytic_parameters(effective_ζ(ζ), ramp, t, totalparity; kwargs...)
+    zero_energy_analytic_parameters(effective_ζ_by_η(ζ), ramp, t, totalparity; kwargs...)
 end
 function zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...)
     initial = 0.0
@@ -147,8 +147,6 @@ function diagonal_majoranas_at_zero_energy(γ, ramp, t, ζ, totalparity)
 end
 function diagonal_majoranas(γ, ramp, t, ζ, λ)
     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, ζ, ramp, t)
-    # Δs = ramp(t) ./ (1, sqrt(1 + ζ^4), sqrt(1 + ζ^4)) # divide to normalize the hamiltonian
-
     sθ, cθ = sincos(θ)
     sϕ, cϕ = sincos(ϕ)
 

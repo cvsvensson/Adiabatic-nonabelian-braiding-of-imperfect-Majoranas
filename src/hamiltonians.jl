@@ -3,20 +3,20 @@ ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
 
 _ham_with_corrections(ramp, ϵs, ζ::Number, correction, P, t, α=1) = _ham_with_corrections(ramp, ϵs, (ζ, ζ, ζ), correction, P, t, α)
 function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
-    Δs = ramp(t) ./ (1, sqrt(1 + (ζs[1]ζs[2])^2), sqrt(1 + (ζs[1]ζs[3])^2)) # divide to normalize the hamiltonian
-    Ham = (Δs[1] * P[:M, :M̃] + Δs[2] * P[:M, :L] + Δs[3] * P[:M, :R] +
-           ϵs[1] * P[:M, :M̃] + ϵs[2] * P[:L, :L̃] + ϵs[3] * P[:R, :R̃] +
+    Δs = ramp(t) ./ (1, sqrt(1 + ζs[1]^2) * sqrt(1 + ζs[2]^2), sqrt(1 + ζs[1]^2) * sqrt(1 + ζs[3]^2)) # divide to normalize the hamiltonian
+    Ham = (Δs[1] * P[:M, :M̃] +
+           Δs[2] * P[:M, :L] +
+           Δs[3] * P[:M, :R] +
+           ϵs[1] * P[:M, :M̃] +
+           ϵs[2] * P[:L, :L̃] +
+           ϵs[3] * P[:R, :R̃] +
            _error_ham(Δs, ζs, P))
     Ham += correction(t, Δs, ζs, P, Ham)
     return Ham * α
 end
 _error_ham(Δs, ζ::Number, P) = _error_ham(Δs, (ζ, ζ, ζ), P)
 _error_ham(Δs, ζs, P) = +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
-# _error_ham(ramp, t, ζ::Number, P) = _error_ham(ramp, t, (ζ, ζ, ζ), P)
-# function _error_ham(ramp, t, ζs, P)
-#     Δs = ramp(t)
-#     +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
-# end
+
 
 abstract type AbstractCorrection end
 (corr::AbstractCorrection)(t, Δs, ζs, P, ham) = error("(corr::C)(t, Δs, ζs, P, ham) not implemented for C=$(typeof(corr))")

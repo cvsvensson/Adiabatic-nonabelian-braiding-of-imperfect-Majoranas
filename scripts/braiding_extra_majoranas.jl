@@ -20,7 +20,7 @@ U0 = mtype(I(2^(N - 1)))
 
 ##
 param_dict = Dict(
-    :ζ => 1.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
+    :ζ => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :ϵs => (0, 0, 0), #Dot energy levels
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
@@ -39,7 +39,7 @@ param_dict = Dict(
 
 ## Solve the system
 prob = setup_problem(param_dict);
-stack([prob[:correction].scaling[t] for t in prob[:ts]])' |> plot
+stack([prob[:correction].scaling[t] for t in prob[:ts]]) |> plot
 ##
 @time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
@@ -106,15 +106,15 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
 interpolations = []
 @time @showprogress @threads for (idx, delta) in collect(enumerate(deltas))
     local_dict = Dict(
-        :ζ => tan(delta) .* (1, 1, 1),
+        :ζ => tan(delta) .* (1, 0.5, 0.3),
         :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 200,
-        :correction => InterpolatedExactSimpleCorrection(),
-        # :correction => OptimizedIndependentSimpleCorrection(20, 1e-7),
+        # :correction => InterpolatedExactSimpleCorrection(),
+        :correction => OptimizedIndependentSimpleCorrection(30, 1e-2),
         # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
@@ -147,8 +147,8 @@ interpolations = []
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
-plot(deltas / (pi / 4), double_braid_majorana_fidelity, label="", lw=2, marker=true, ylims=(-0.01, 1.01))
-plot!(deltas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="")
+plot(deltas / (pi / 4), double_braid_majorana_fidelity, lw=2, marker=true, ylims=(-0.01, 1.01), label="fidelity to majorana gate")
+plot!(deltas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
 plot!(deltas / (pi / 4), numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to analytical gate", marker=true)
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
