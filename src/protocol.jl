@@ -50,4 +50,4 @@ end
 
 # majorana_labels = 0:5
 # old_labels_to_new = Dict(zip(0:5, [:M, :M̃, :L, :R, :L̃, :R̃]))
-get_majorana_basis() = SingleParticleMajoranaBasis(6, [:M, :M̃, :L, :R, :L̃, :R̃])
+get_majorana_basis() = SingleParticleMajoranaBasis(6, [:M, :M̃, :L, :L̃, :R, :R̃])
