@@ -1,14 +1,13 @@
 module MajoranaBraiding
 using LinearAlgebra
 using StaticArrays
-using QuantumDots
 using Optim, Interpolations
 using TestItems
 using Roots
-using Majoranas
 using Plots
 using UnPack
 using OrdinaryDiffEqCore
+using FermionicHilbertSpaces
 
 export MajoranaWrapper
 export RampProtocol

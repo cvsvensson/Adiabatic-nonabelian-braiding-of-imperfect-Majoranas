@@ -1,25 +1,24 @@
 using MajoranaBraiding
-# using QuantumDots
-# using Majoranas
 using LinearAlgebra
 using Plots
 using OrdinaryDiffEqTsit5
 using ProgressMeter
 using StaticArrays
 using Base.Threads
-# using Accessors
 ##
-γ = get_majorana_basis()
-N = length(γ.fermion_basis)
+# γ = get_majorana_basis()
+N = 3#length(γ.fermion_basis)
+d = 2^(N - 1)
 # use_static_arrays = true
-mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
+mtype, vtype = SMatrix{d,d,ComplexF64}, SVector{d,ComplexF64}
 
 ## Initial state and identity matrix
 # u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
-U0 = mtype(I(2^(N - 1)))
+U0 = mtype(I(d))
 
 ##
 param_dict = Dict(
+    :mtype => mtype, #Matrix type for the Hamiltonian
     :ζ => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :ϵs => (0, 0, 0), #Dot energy levels
     :T => 1e4, #Maximum time
@@ -28,19 +27,12 @@ param_dict = Dict(
     :k => 1e1, #Determines the slope of the ramp
     :steps => 200, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
-    # :correction => OptimizedSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
-    # :correction => OptimizedIndependentSimpleCorrection(1, 0), #Different corrections are available. This is the most relevant one for the paper
-    :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
-    :steps => 2000, #Number of timesteps for interpolations
-    :totalparity => totalparity, #Total parity of the system
-    :correction => InterpolatedExactSimpleCorrection(totalparity), #Different corrections are available. This is the most relevant one for the paper
-    :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
-    :P => P, #Dict with parity operators
-    :inplace => inplace, #Does the hamiltonian act in place? I'm not sure this works anymore
-    :γ => γ, #Majorana basis
+    # :correction => OptimizedSimpleCorrection(),
+    # :correction => OptimizedIndependentSimpleCorrection(1, 0), :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
+    # :γ => γ, #Majorana basis
     :u0 => U0, #Initial state. Use U0 for the identity matrix.
     :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
-    :totalparity => 1
+    :totalparity => -1
 )
 
 ## Solve the system
@@ -52,10 +44,9 @@ plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error"
 ##
 visualize_spectrum(prob)
 visualize_deltas(prob)
-# visualize_parities(sol, prob)
 visualize_analytic_parameters(prob)
 visualize_protocol(prob)
-
+visualize_parities(prob)
 ## Calculate full solution for T and 2T and calculate the fidelities
 gridpoints = 10
 T_arr = range(1e1, 1e3, length=gridpoints)
@@ -65,6 +56,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
 @time @showprogress for (idx_T, T) in enumerate(T_arr)
     Threads.@threads for (idx_z, ζ) in collect(enumerate(zetas))
         local_dict = Dict(
+            :mtype => mtype,
             :ζ => ζ,
             :ϵs => (0, 0, 0),
             :T => T,
@@ -74,8 +66,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
             :steps => 2000,
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => true,
-            :γ => γ,
-            :totalparity => -1,
+            :totalparity => 1,
             :u0 => U0
         )
         prob = setup_problem(local_dict)
@@ -95,72 +86,58 @@ plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", 
     heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
-gridpoints = 20
-deltas = sqrt.(range(0, 2(pi / 4)^2, gridpoints)) #range(0, 1, length=gridpoints)
-single_braid_majorana_fidelity = zeros(Float64, gridpoints)
-single_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
-single_braid_kato_fidelity = zeros(Float64, gridpoints)
+gridpoints = 40
+ζs = sqrt.(range(0, 1, gridpoints)) #range(0, 1, length=gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
 angles = zeros(Float64, gridpoints)
-analytical_angles = zeros(Float64, gridpoints)
 analytical_fidelity = zeros(Float64, gridpoints)
 fidelities = zeros(Float64, gridpoints)
 fidelity_numerics_analytic = zeros(Float64, gridpoints)
 numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
-interpolations = []
-@time @showprogress @threads for (idx, delta) in collect(enumerate(deltas))
+@time @showprogress @threads for (idx, ζ) in collect(enumerate(ζs))
     local_dict = Dict(
-        :ζ => tan(delta) .* (1, 0.5, 0.3),
+        :mtype => mtype,
+        :ζ => ζ .* (1, 1, 1),
         :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
-        :steps => 200,
-        # :correction => InterpolatedExactSimpleCorrection(),
-        :correction => OptimizedIndependentSimpleCorrection(30, 1e-2),
+        :steps => 2000,
+        :correction => InterpolatedExactSimpleCorrection(),
+        # :correction => OptimizedSimpleCorrection(),
+        # :correction => OptimizedIndependentSimpleCorrection(30, 1e-2),
         # :correction => EigenEnergyCorrection(),
-        :correction => NoCorrection(),
+        # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
-        :γ => γ,
         :u0 => U0,
         :totalparity => 1
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
-    sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
+    sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, 2T])
     proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
-    majorana_single_braid = majorana_exchange(-prob[:P][:L, :R])
-    single_kato = single_braid_gate_kato(prob)
-    single_gate_analytical = single_braid_gate_analytical(prob)
+    majorana_double_braid = majorana_exchange(-prob[:P][:L, :R])^2
     double_kato = single_braid_gate_kato(prob)^2
-    majorana_double_braid = majorana_single_braid^2
-    double_gate_analytical = single_gate_analytical^2
-    single_braid_result = sol(T)
+    double_gate_analytical = single_braid_gate_analytical(prob)^2
     double_braid_result = sol(2T)
-    analytical_angles[idx] = single_braid_gate_analytical_angle(prob)
-    single_braid_majorana_fidelity[idx] = gate_fidelity(majorana_single_braid, single_braid_result, proj)
-    single_braid_kato_fidelity[idx] = gate_fidelity(single_kato, single_braid_result, proj)
-    single_braid_analytical_gate_fidelity[idx] = gate_fidelity(single_gate_analytical, majorana_single_braid, proj)
     double_braid_majorana_fidelity[idx] = gate_fidelity(majorana_double_braid, double_braid_result, proj)
     double_braid_kato_fidelity[idx] = gate_fidelity(double_kato, double_braid_result, proj)
     double_braid_analytical_gate_fidelity[idx] = gate_fidelity(double_gate_analytical, majorana_double_braid, proj)
     numerical_to_effective_analytical_fidelity[idx] = gate_fidelity(double_gate_analytical, double_braid_result, proj)
-    push!(interpolations, stack([prob[:correction].scaling[t] for t in prob[:ts]])')
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
-plot(deltas / (pi / 4), double_braid_majorana_fidelity, lw=2, marker=true, ylims=(-0.01, 1.01), label="fidelity to majorana gate")
-plot!(deltas / (pi / 4), double_braid_analytical_gate_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
-plot!(deltas / (pi / 4), numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to analytical gate", marker=true)
+plot(ζs, double_braid_majorana_fidelity, lw=2, marker=true, ylims=(-0.01, 1.01), label="fidelity to majorana gate")
+plot!(ζs, analytical_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
+plot!(ζs, numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to analytical gate", marker=true)
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
-# plot!(deltas, single_braid_majorana_fidelity, label="single_braid_majorana_fidelity", xlabel="ω", lw=2)
-plot(deltas, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
-plot(deltas, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
+plot(ζs, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
+plot(ζs, single_braid_kato_fidelity, label="single_braid_kato_fidelity", lw=2)
 plot!(deltas, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
 plot!(deltas, analytical_fidelity, label="analytical majorana similarity", lw=2)
 # plot!(deltas, fidelity_numerics_analytic, label="fidelity_numerics_analytic", lw=2)

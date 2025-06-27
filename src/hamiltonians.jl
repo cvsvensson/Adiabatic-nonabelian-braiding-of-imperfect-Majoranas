@@ -56,62 +56,6 @@ function (corr::IndependentSimpleCorrection)(t, Δs, ζs, P, ham)
     scaling = corr.scaling(t)
     scaling[1] * Δ * P[:L, :L̃] + scaling[2] * Δ * P[:R, :R̃]
 end
-struct CorrectionSum
-    corrections::Vector{<:AbstractCorrection}
-end
-Base.:+(corr1::AbstractCorrection, corr2::AbstractCorrection) = CorrectionSum([corr1, corr2])
-Base.:+(corr::CorrectionSum, corr2::AbstractCorrection) = CorrectionSum([corr.corrections..., corr2])
-Base.:+(corr1::AbstractCorrection, corr::CorrectionSum) = CorrectionSum([corr1, corr.corrections...])
-
-function (corr::CorrectionSum)(args...)
-    ham0 = args[end]
-    pre_args = args[1:end-1]
-    function f((old_corr, old_ham), _corr)
-        new_corr = _corr(pre_args..., old_ham)
-        (old_corr + new_corr, old_ham + new_corr)
-    end
-    foldl(f, corr.corrections, init=(0I, ham0))[1]
-end
-setup_correction(corr::CorrectionSum, d::Dict) = CorrectionSum(map(corr -> setup_correction(corr, d), corr.corrections))
-
-
-struct EigenEnergyCorrection{T} <: AbstractCorrection
-    scaling::T
-    function EigenEnergyCorrection(scaling)
-        newscaling = _process_constant_scaling(scaling)
-        new{typeof(newscaling)}(newscaling)
-    end
-end
-EigenEnergyCorrection() = EigenEnergyCorrection(t -> true)
-(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham))
-setup_correction(corr::EigenEnergyCorrection, ::Dict) = corr
-
-function full_energy_correction_term(ham)
-    vals, vecs = eigen(Hermitian(ham))
-    δE = (vals[2] - vals[1]) / 2
-    δE * (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]')
-end
-
-struct WeakEnergyCorrection{B,T} <: AbstractCorrection
-    basis::B
-    scaling::T
-    function WeakEnergyCorrection(basis, scaling)
-        newscaling = _process_constant_scaling(scaling)
-        new{typeof(basis),typeof(newscaling)}(basis, newscaling)
-    end
-end
-setup_correction(corr::WeakEnergyCorrection, ::Dict) = corr
-WeakEnergyCorrection(basis) = WeakEnergyCorrection(basis, t -> true)
-(corr::WeakEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * weak_energy_correction_term(ham, corr.basis))
-
-function weak_energy_correction_term(ham, basis; alg=Majoranas.WM_BACKSLASH())
-    vals, vecs = eigen(Hermitian(ham))
-    δE = (vals[2] - vals[1]) / 2
-    # push the lowest energy states δE closer together
-    weak_ham_prob = WeakMajoranaProblem(basis, vecs, nothing, [nothing, nothing, nothing, δE])
-    sol = solve(weak_ham_prob, alg)
-    return Majoranas.coeffs_to_matrix(basis, sol)
-end
 
 struct OptimizedSimpleCorrection <: AbstractCorrection end
 
@@ -129,7 +73,7 @@ function optimized_simple_correction(ramp, ϵs, ζs, P, ts; alg=BFGS())
         f(x) = cost_function(only(x), t)
         initial = length(results) > 0 ? results[end] : 0.0
         result = optimize(f, [initial], alg, Optim.Options(time_limit=1 / length(ts)))
-        println("result = ", result)
+        # println("result = ", result)
         push!(results, only(result.minimizer))
     end
     return SimpleCorrection(linear_interpolation(ts, results))
@@ -151,36 +95,17 @@ function optimized_independent_simple_correction(ramp, ϵs, ζs, P, ts, T; penal
     function cost_function(x::Vector, t)
         ham = Hermitian(H((ramp, ϵs, ζs, IndependentSimpleCorrection(x), P), t))
         vals = eigvals(ham)
-        # catch
-        #     display(ham)
-        #     display(x)
-        #     display(middle)
-        #     display(middle.minimizer)
-        # end
         return vals[2] - vals[1]
     end
-    # abs_err = 1e-10
-    # rel_err = 1e-10
+
     lambda_limit = 20
     middle = optimize(x -> cost_function(x, T / 2), lambda_limit .* [-1, -1], lambda_limit * [1, 1], [0.0, 0.0], alg, Optim.Options(time_limit=maxtime, f_abstol=1e-14, f_reltol=1e-14))
     middle_result = iszero(middle.minimizer) ? [1, 1] / sqrt(2) : middle.minimizer / norm(middle.minimizer)
     # initial = [0.0]
     for t in ts
-        # guess = find_zero_energy_from_analytics(ζs, ramp, t, 0.0, totalparity; atol=1e-6, rtol=1e-6)
-        #[guess, guess]#
-        # initial = length(results) > 0 ? results[end] : [0.0, 0.0]
         initial = length(results) > 0 ? norm(results[end]) : 0.0
-        # result = optimize(x -> cost_function(only(x) .* middle_result, t), initial, alg,
         result = optimize(x -> cost_function(x .* middle_result, t) + penalty_factor * abs2(initial - x), -40 * norm(middle_result), 40 * norm(middle_result), Brent(); abs_tol=1e-14, rel_tol=1e-14, time_limit=maxtime / length(ts))
-
-        # result = optimize(x -> cost_function(x, t), initial, alg,
-        # Optim.Options(time_limit=maxtime / length(ts)))#, Optim.Options(g_tol=abs_err, x_tol=rel_err))
-        # push!(results, result.minimizer)
         push!(results, only(result.minimizer) .* middle_result)
     end
-    # println(cost_function(results[1], ts[1]))
-    # println("__")
-    # findmax([cost_function(res, t) for (res, t) in zip(results, ts)]) |> display
-    # println(maximum(cost_function(res, t)) for (res, t) in zip(results, ts))
     return IndependentSimpleCorrection(linear_interpolation(ts, results))
 end

@@ -73,36 +73,17 @@ gate_fidelity(g1, g2, proj) = abs(dot(g1, proj * g2 * proj)^2 / (dot(g1, proj * 
 end
 
 
-# analytical_protocol_gate(d::Dict) = analytical_protocol_gate(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-# function analytical_protocol_gate(P, ζ, ramp, T, totalparity; opt_kwargs...)
-#     (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-#     return exp(1im * π / 4 * ((1 - α) * P[:L, :R] - (1 - ν) * P[:L̃, :R̃]))
-# end
-single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
-function single_braid_gate_kato(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    foldr(*, analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...))
+single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:totalparity])
+function single_braid_gate_kato(P, ζ, totalparity)
+    foldr(*, analytical_gates(P, ζ, totalparity))
 end
 
-
-single_braid_effective_rotation_angle(d::Dict) = single_braid_effective_rotation_angle(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1))
-function single_braid_effective_rotation_angle(P, ζ, ramp, T, totalparity=1)
-    (; α, ν) = analytical_components_middle_of_protocol(P, ζ, ramp, T, totalparity)
-    return π / 4 * (abs(α) - abs(ν))
-end
-
-single_braid_gate_lucky_guess(d::Dict) = single_braid_gate_lucky_guess(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function single_braid_gate_lucky_guess(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-    (; α, ν) = zero_energy_analytic_parameters(ζ, ramp, T, totalparity; opt_kwargs...)
-    return exp(π / 4 * (1 + ν) * 1im * P[:L, :R]) * exp(π / 4 * (1 - α) * 1im * P[:L̃, :R̃])
-end
-function analytical_gates(P, ζ, ramp, T, totalparity; opt_kwargs...)
-    (; μ, α, β, ν, θ_α, θ_μ) = zero_energy_analytic_parameters(ζ, ramp, T / 2, totalparity; opt_kwargs...)
+function analytical_gates(P, ζ, totalparity)
+    (; μ, α, β, ν, θ_α, θ_μ) = analytical_components_middle_of_protocol(ζ, totalparity)
     ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
     U_23 = exp(1im * π / 4 * (P[:L, :R] + P[:L̃, :R̃])) * exp(-1im * π / 4 * ν * (μ * P[:M̃, :R] + ν * P[:L, :R]) + 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃]))
-    # U_23 = exp(+1im * π / 4 * (P[2, 3] + P[4, 5])) * exp(1im * π / 4 * ν * (μ * P[1, 3] - ν * P[2, 3]) + 1im * π / 4 * α * (β * P[0, 5] - α * P[4, 5]))
-    # label_replacements = [0 => :M, 1 => :M̃, 2=>:L, 3=>:R, 4=>:L̃, 5=>:R̃]
     U_31 = exp(-1im * ϕ_μ * P[:M̃, :R] - 1im * ϕ_α * P[:M, :R̃])
     return U_31, U_23, U_12
 
@@ -118,37 +99,20 @@ function zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...
     return analytic_parameters(result, ζ, ramp, t)
 end
 
-double_braid_analytical_gate_fidelity(d::Dict) = double_braid_analytical_gate_fidelity(d[:ζ], d[:ramp], d[:T], d[:totalparity])
-function double_braid_analytical_gate_fidelity(ζ, ramp, T, totalparity; opt_kwargs...)
-    (; α, ν) = analytical_components_middle_of_protocol(P, ζ, ramp, T / 2, totalparity; opt_kwargs...)
+analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:ζ], d[:totalparity])
+function analytical_gate_fidelity(ζ, totalparity)
+    (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
     return cos(π / 2 * (1 - abs(α) + abs(ν)))^2
 end
-
-analytical_components_middle_of_protocol(d::Dict) = analytical_components_middle_of_protocol(d[:P], d[:ζ], d[:ramp], d[:T], get(d, :totalparity, 1); get(d, :opt_kwargs, (;))...)
-function analytical_components_middle_of_protocol(P, ζ, ramp, T, totalparity=1; opt_kwargs...)
-    η = ζ^2
-    ϕ = atan(η)
-    λ = -totalparity * sin(ϕ)
-    θ_μ = -1/2* atan(2 * λ * η/(1 + λ^2 - η^2) )
-    ν = sin(θ_μ)
-    μ = cos(θ_μ)
-    θ_α = -1*atan(-η * tan(θ_μ) + λ )
-    β = sin(θ_α)
-    α = cos(θ_α)
-
-    return (; μ, α, β, ν, θ_α, θ_μ)
+single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:totalparity])
+function single_braid_gate_analytical_angle(ζ, totalparity)
+    (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
+    return π / 4 * (abs(α) - abs(ν))
 end
-single_braid_gate_analytical_angles(d::Dict) = single_braid_gate_analytical_angles(d[:ζ], d[:ramp], d[:T], d[:totalparity])
-function single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    # initial = 0.0
-    result = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
-    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(result, ζ, ramp, T / 2)
-    return α, ν
-end
-single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:ramp], d[:T], d[:totalparity])
-function single_braid_gate_analytical_angle(ζ, ramp, T, totalparity)
-    α, ν = single_braid_gate_analytical_angles(ζ, ramp, T, totalparity)
-    return π / 4 * ((1 + ν) - totalparity * (1 - α))
+single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:totalparity])
+function single_braid_gate_analytical(P, ζ, totalparity)
+    (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
+    return exp(-π / 4 * (abs(α) - abs(ν)) * 1im * P[:L, :R])
 end
 
 

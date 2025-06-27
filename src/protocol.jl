@@ -31,14 +31,13 @@ end
 (ramp::RampProtocol)(t) = get_deltas(ramp, t)
 
 function setup_problem(dict)
-    @unpack γ, ϵs, u0, ζ, Δmin, Δmax, T, k, steps, correction, totalparity = dict
-    N = length(γ.fermion_basis)
-    P = parity_operators(γ, totalparity, SMatrix{2^(N - 1),2^(N - 1)})
+    @unpack ϵs, u0, ζ, Δmin, Δmax, T, k, steps, correction, totalparity, mtype = dict
+    P = parity_operators(totalparity, mtype)
     extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
     ramp = RampProtocol(Δmin, Δmax, T, k, extra_shifts)
     tspan = (0.0, 2 * T)
     ts = range(0, tspan[2], steps)
-    newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan, :P =>P)
+    newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan, :P => P)
     corr = setup_correction(correction, newdict)
     p = (ramp, ϵs, ζ, corr, P)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
@@ -48,6 +47,10 @@ function setup_problem(dict)
     return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :H => H)
 end
 
-# majorana_labels = 0:5
-# old_labels_to_new = Dict(zip(0:5, [:M, :M̃, :L, :R, :L̃, :R̃]))
-get_majorana_basis() = SingleParticleMajoranaBasis(6, [:M, :M̃, :L, :L̃, :R, :R̃])
+const MajoranaLabels = [:M, :M̃, :L, :L̃, :R, :R̃]
+function parity_operators(totalparity, mtype)
+    @fermions f
+    H = hilbert_space(1:3, ParityConservation(totalparity))
+    majoranas = vcat([f[k] + hc for k in 1:3], [1im * f[k] + hc for k in 1:3])
+    Dict((l1, l2) => mtype(matrix_representation(1im * majoranas[n1] * majoranas[n2], H)) for ((n1, l1), (n2, l2)) in Base.product(enumerate(MajoranaLabels), enumerate(MajoranaLabels)) if l1 != l2)
+end

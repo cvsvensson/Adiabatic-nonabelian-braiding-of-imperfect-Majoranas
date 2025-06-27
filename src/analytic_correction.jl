@@ -1,6 +1,6 @@
 struct InterpolatedExactSimpleCorrection <: AbstractCorrection end
 
-function setup_correction(corr::InterpolatedExactSimpleCorrection, d::Dict)
+function setup_correction(::InterpolatedExactSimpleCorrection, d::Dict)
     ζ = d[:ζ]
     ramp = d[:ramp]
     ts = d[:ts]
@@ -16,41 +16,20 @@ function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwarg
     end
     return SimpleCorrection(linear_interpolation(ts, results, extrapolation_bc=Periodic()))
 end
-find_zero_energy_from_analytics_midpoint(ζ::Tuple, ramp, totalparity; kwargs...) = find_zero_energy_from_analytics_midpoint(effective_ζ_by_η(ζ), ramp, totalparity; kwargs...)
-function find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity; kwargs...)
-    # η = ζ^2
-    # ϕ = atan(η)
-    # λ = totalparity * sin(ϕ)
-    λ = totalparity * ζ^2 / sqrt(ζ^4 + 1)
-end
+
 find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_ζ_by_η(ζ), ramp, t, initial, totalparity; kwargs...)
 function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
     λ = try
-        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, kwargs...)
+        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε + totalparity * λ, initial; atol, rtol, kwargs...)
     catch
-        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε - totalparity * λ, initial; atol, rtol, verbose=true, kwargs...)
+        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε + totalparity * λ, initial; atol, rtol, verbose=true, kwargs...)
     end
     return λ
 end
 
-# """ 
-#     energy_splitting(x, ζ, ramp, t, totalparity)
 
-# Calculate (analytically) the energy splitting between the two lowest energy levels of the system. Works only when all ζs are the same.
-# """
-# function energy_splitting(λ, ζ, ramp, t, totalparity)
-#     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ) = analytic_parameters(λ, ζ, ramp, t)
-
-#     Δϵ = β * ν + ηtilde * μ * α + λtilde * α * ν - λ * totalparity
-#     Δϵ = ηtilde * α - totalparity * λ * μ
-#     return Δϵ
-# end
 function analytic_energy_spectrum(λ, ζ, ramp, t, totalparity)
     (; Δ, ε, Δtilde) = analytic_parameters(λ, ζ, ramp, t)
-    # Δ * sort([ε - totalparity * λ, ε + totalparity * λ, -ε + Δtilde - totalparity * λ, -ε - Δtilde + totalparity * λ])
-    # totalparity = 1
-
-    # println(Δ, ε, Δtilde)
     es = [0, ε + λ, ε + Δtilde, Δtilde + λ] .- (totalparity == -1) * ε
     2Δ * sort(es .- sum(es) / 4)
 end
@@ -68,13 +47,7 @@ function effective_ζ_by_η(ζ::Tuple)
     # return (sqrt(ηs[1]) * (ηs[2] * ηs[3])^(1 / 4)) |> sqrt
     return sqrt(ηs[1] * sqrt(ηs[2] * ηs[3])) |> sqrt # awesome
 end
-"""
-    analytic_parameters(x, ζ, ramp, t)
 
-Calculate the energy parameters H and Λ for the system.
-Λ (capital λ) and H (capital η) are the generalizations of λ and η for Δ_1 > 0.
-In the limit Δ_1 = 0, Λ = λ and H = η.
-"""
 analytic_parameters(λ, ζ::Tuple, ramp, t) = analytic_parameters(λ, effective_ζ_by_η(ζ), ramp, t)
 function analytic_parameters(λ, ζ, ramp, t)
     Δs = ramp(t) ./ (1, (1 + ζ^2), (1 + ζ^2)) # divide to normalize the hamiltonian
@@ -83,46 +56,47 @@ function analytic_parameters(λ, ζ, ramp, t)
     θ = atan(Δ23, Δs[1])
     ϕ = atan(Δs[3], Δs[2])
     η = ζ^2
-    ηtilde = η * sin(θ)^2 - λ * cos(θ)
     λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
+    ηtilde = η * sin(θ)^2 - λ * cos(θ)
     θ_μ = -1 / 2 * atan(2 * λtilde * ηtilde, 1 + λtilde^2 - ηtilde^2)
     θ_α = atan(ηtilde * tan(θ_μ) - λtilde)
 
     ν, μ = sincos(θ_μ)
     β, α = sincos(θ_α)
-    # x = ηtilde * tan(θ_μ) - λtilde
-    # β, α = x / sqrt(1 + x^2), 1 / sqrt(1 + x^2)
     Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ)
 
-    ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ
+    ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ. The sign of the last term differs from the SI.
 
-    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, Δ23, ϕ, η, λ)
-end
-function analytic_parameters_midpoint2(ζ, totalparity, ramp, T)
-    λ = find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity)
-    analytic_parameters(λ, ζ, ramp, T / 2)
+    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, ϕ, η, λ)
 end
 
-function analytic_parameters_midpoint(ζ, totalparity)
+# analytic_parameters_midpoint(ζ::Tuple, totalparity) = analytic_parameters_midpoint(effective_ζ_by_η(ζ), totalparity)
+# function analytic_parameters_midpoint(ζ, totalparity)
+#     η = ζ^2
+#     λ = -totalparity * η / sqrt(1 + η^2)
+#     # α = cos(atan(-η * tan(θ) + λ))
+#     # α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
+#     # θ = -1 / 2 * atan(2λ * η, 1 + λ^2 - η^2)
+#     # α = 1 / sqrt(1 + (λ - η * tan(θ))^2)
+#     # ν = sin(θ)
+#     ν = -sin(1 / 2 * atan(2 * λ * η, 1 + λ^2 - η^2))
+#     α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
+#     θ_μ = asin(v)
+#     (; ν, α, η, λ)
+# end
+
+analytical_components_middle_of_protocol(d::Dict) = analytical_components_middle_of_protocol(d[:ζ], d[:totalparity])
+analytical_components_middle_of_protocol(ζ::Tuple, totalparity) = analytical_components_middle_of_protocol(effective_ζ_by_η(ζ), totalparity)
+function analytical_components_middle_of_protocol(ζ, totalparity)
     η = ζ^2
-    λ = totalparity * η / sqrt(1 + η^2)
-    θ = -1 / 2 * atan(2λ * η, 1 + λ^2 - η^2)
-    # α = cos(atan(-η * tan(θ) + λ))
-    # α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
-    α = 1 / sqrt(1 + (λ - η * tan(θ))^2)
-    ν = sin(θ)
-    (; ν, α, η, λ)
+    λ = -totalparity * η / sqrt(1 + η^2)
+    θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
+    ν, μ = sincos(θ_μ)
+    θ_α = -1 * atan(-η * tan(θ_μ) + λ)
+    β, α = sincos(θ_α)
+    return (; μ, α, β, ν, θ_α, θ_μ, λ)
 end
 
-@testitem "Zero energy solution" begin
-    T = 1e1
-    k = 10
-    ramp = RampProtocol(0, 1, T, k)
-    ζ = 0.5
-    for totalparity in (-1, 1)
-        @test MajoranaBraiding.find_zero_energy_from_analytics_midpoint(ζ, ramp, totalparity) ≈ find_zero_energy_from_analytics(ζ, ramp, T / 2, 0.0, totalparity)
-    end
-end
 
 @testitem "Energy splitting" begin
     using StaticArrays, LinearAlgebra
