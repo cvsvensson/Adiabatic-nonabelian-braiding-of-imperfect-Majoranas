@@ -3,7 +3,6 @@ using LinearAlgebra
 using Plots
 using OrdinaryDiffEqTsit5
 using ProgressMeter
-using StaticArrays
 using Base.Threads
 ##
 param_dict = Dict(
