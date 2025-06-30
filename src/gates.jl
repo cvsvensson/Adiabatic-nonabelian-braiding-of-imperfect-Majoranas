@@ -48,7 +48,7 @@ end
 single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:totalparity])
 function single_braid_gate_analytical(P, ζ, totalparity)
     (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
-    return exp(-π / 4 * (abs(α) - abs(ν)) * 1im * P[:L, :R])
+    return exp(-totalparity * π / 4 * (abs(α) - abs(ν)) * 1im * P[:L, :R])
 end
 
 
