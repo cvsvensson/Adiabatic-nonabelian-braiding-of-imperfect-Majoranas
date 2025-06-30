@@ -31,7 +31,12 @@ end
 (ramp::RampProtocol)(t) = get_deltas(ramp, t)
 
 function setup_problem(dict)
-    @unpack u0, ζ, Δmin, Δmax, T, k, steps, correction, totalparity, mtype = dict
+    @unpack ζ, Δmin, Δmax, T, k, steps, correction, totalparity = dict
+    N = 3
+    d = 2^(N - 1)
+    _u0 = dict[:initial]
+    mtype = get(dict, :mtype, SMatrix{d,d,ComplexF64})
+    vtype = get(dict, :vtype, SVector{d,ComplexF64})
     P = parity_operators(totalparity, mtype)
     extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
     ramp = RampProtocol(Δmin, Δmax, T, k, extra_shifts)
@@ -43,14 +48,22 @@ function setup_problem(dict)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
     H(p, t) = ham_with_corrections(p, t)
     op = interpolate ? get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
+    u0 = process_initial_state(_u0, P, (mtype, vtype))
     prob = ODEProblem{false}(op, u0, tspan, p)
-    return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :H => H)
+    return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :H => H, :u0 => _u0)
+end
+function process_initial_state(u0::Pair{<:Tuple,Int}, P, (mtype, vtype))
+    label = first(u0)
+    parity = last(u0)
+    vtype(collect(first(eachcol(eigen(Hermitian(-parity * P[label] + P[:M, :M̃]), 1:1).vectors))))
+end
+function process_initial_state(::UniformScaling, P, (mtype, vtype))
+    mtype(I)
 end
 
 const MajoranaLabels = [:M, :M̃, :L, :L̃, :R, :R̃]
 function parity_operators(totalparity, mtype)
-    @fermions f
-    H = hilbert_space(1:3, ParityConservation(totalparity))
-    majoranas = vcat([f[k] + hc for k in 1:3], [1im * f[k] + hc for k in 1:3])
-    Dict((l1, l2) => mtype(matrix_representation(1im * majoranas[n1] * majoranas[n2], H)) for ((n1, l1), (n2, l2)) in Base.product(enumerate(MajoranaLabels), enumerate(MajoranaLabels)) if l1 != l2)
+    @majoranas γ
+    H = FermionicHilbertSpaces.majorana_hilbert_space(MajoranaLabels, ParityConservation(totalparity))
+    Dict((l1, l2) => mtype(matrix_representation(1im * γ[l1] * γ[l2], H)) for (l1, l2) in Base.product(MajoranaLabels, MajoranaLabels) if l1 != l2)
 end

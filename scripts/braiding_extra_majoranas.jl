@@ -6,35 +6,26 @@ using ProgressMeter
 using StaticArrays
 using Base.Threads
 ##
-N = 3
-d = 2^(N - 1)
-mtype, vtype = SMatrix{d,d,ComplexF64}, SVector{d,ComplexF64}
-
-## Initial state and identity matrix
-# u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
-U0 = mtype(I(d))
-
-##
 param_dict = Dict(
-    :mtype => mtype, #Matrix type for the Hamiltonian
-    :ζ => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
+    :ζ => 0.2,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
     :k => 1e1, #Determines the slope of the ramp
-    :steps => 200, #Number of timesteps for interpolations
+    :steps => 500, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
     # :correction => OptimizedSimpleCorrection(),
-    # :correction => OptimizedIndependentSimpleCorrection(1, 0), :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
+    # :correction => OptimizedIndependentSimpleCorrection(1, 0), 
+    :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     # :γ => γ, #Majorana basis
-    :u0 => U0, #Initial state. Use U0 for the identity matrix.
+    :initial => (:L, :L̃) => 1, #Initial state. Use I for the identity matrix.
     :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
     :totalparity => 1
 )
 
 ## Solve the system
 prob = setup_problem(param_dict);
-stack([prob[:correction].scaling[t] for t in prob[:ts]]) |> plot
+stack([prob[:correction].scaling(t) for t in prob[:ts]]) |> plot
 ##
 @time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
@@ -53,7 +44,6 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
 @time @showprogress for (idx_T, T) in enumerate(T_arr)
     Threads.@threads for (idx_z, ζ) in collect(enumerate(zetas))
         local_dict = Dict(
-            :mtype => mtype,
             :ζ => ζ,
             :T => T,
             :Δmax => 1 * [1 / 3, 1 / 2, 1],
@@ -63,7 +53,7 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => true,
             :totalparity => 1,
-            :u0 => U0
+            :initial => I
         )
         prob = setup_problem(local_dict)
         sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
@@ -94,7 +84,6 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
 numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(ζs))
     local_dict = Dict(
-        :mtype => mtype,
         :ζ => ζ .* (1, 1, 1),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
@@ -108,8 +97,8 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
-        :u0 => U0,
-        :totalparity => 1
+        :initial => I,
+        :totalparity => -1
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
@@ -153,7 +142,7 @@ param_dict = Dict(
     :correction => InterpolatedExactSimpleCorrection(),
     :interpolate_corrected_hamiltonian => true,
     :γ => γ, #Majorana basis
-    :u0 => U0,
+    :initial => I,
     :totalparity => 1
 )
 prob = setup_problem(param_dict)
@@ -182,7 +171,7 @@ for (idx, ζ) in collect(enumerate(zetas))
         :correction => InterpolatedExactSimpleCorrection(),
         :interpolate_corrected_hamiltonian => false,
         :γ => γ,
-        :u0 => U0,
+        :initial => I,
         :totalparity => -1
     )
     prob = setup_problem(local_dict)

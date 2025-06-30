@@ -103,7 +103,6 @@ end
     γ = get_majorana_basis()
     N = length(γ.fermion_basis)
     mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
-    U0 = mtype(I(2^(N - 1)))
 
     T = 10
     k = 1
@@ -129,7 +128,7 @@ end
         :correction => NoCorrection(), #Different corrections are available. This is the most relevant one for the paper
         :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
         :γ => γ, #Majorana basis
-        :u0 => U0, #Initial state. Use U0 for the identity matrix.
+        :initial => I, #Initial state. Use U0 for the identity matrix.
         :totalparity => 1
     )
     prob = setup_problem(param_dict)
