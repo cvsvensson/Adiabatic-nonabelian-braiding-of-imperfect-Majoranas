@@ -89,7 +89,7 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
-        :steps => 2000,
+        :steps => 1000,
         :correction => InterpolatedExactSimpleCorrection(),
         # :correction => OptimizedSimpleCorrection(),
         # :correction => OptimizedIndependentSimpleCorrection(30, 1e-2),
@@ -104,7 +104,7 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
     prob = setup_problem(local_dict)
     sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, 2T])
     proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
-    majorana_double_braid = majorana_exchange(-prob[:P][:L, :R])^2
+    majorana_double_braid = majorana_exchange(prob[:P][:L, :R])^2
     double_kato = single_braid_gate_kato(prob)^2
     double_gate_analytical = single_braid_gate_analytical(prob)^2
     double_braid_result = sol(2T)
@@ -116,7 +116,7 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
 end
 ##
 plot(ζs, double_braid_majorana_fidelity, lw=2, marker=true, ylims=(-0.01, 1.01), label="fidelity to majorana gate")
-plot!(ζs, analytical_fidelity, xlabel="δ", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
+plot!(ζs, analytical_fidelity, xlabel="ζ", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
 plot!(ζs, numerical_to_effective_analytical_fidelity, lw=2, label="fidelity to analytical gate", marker=true)
 ##
 plot(; xlabel="ω", lw=2, frame=:box)
