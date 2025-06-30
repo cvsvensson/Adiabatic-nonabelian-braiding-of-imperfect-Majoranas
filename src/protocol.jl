@@ -3,15 +3,14 @@ struct RampProtocol{Mi,Ma,T,F}
     delta_maxes::Ma
     total_time::T
     smooth_step::F
-    extra_shifts::SVector{3,Float64}
-    function RampProtocol(Δmin::Mi, Δmax::Ma, total_time::T, smooth_step::F, extra_shifts=@SVector [0, 0, 0]) where {Mi,Ma,T,F}
+    function RampProtocol(Δmin::Mi, Δmax::Ma, total_time::T, smooth_step::F) where {Mi,Ma,T,F}
         Δmin = process_delta(Δmin)
         Δmax = process_delta(Δmax)
-        new{typeof(Δmin),typeof(Δmax),T,F}(Δmin, Δmax, total_time, smooth_step, extra_shifts)
+        new{typeof(Δmin),typeof(Δmax),T,F}(Δmin, Δmax, total_time, smooth_step)
     end
 end
 
-RampProtocol(Δmin, Δmax, T, k::Number, extra_shifts=@SVector [0, 0, 0]) = RampProtocol(Δmin, Δmax, T, smooth_step(k), extra_shifts)
+RampProtocol(Δmin, Δmax, T, k::Number) = RampProtocol(Δmin, Δmax, T, smooth_step(k))
 process_delta(Δ::Number) = Δ .* [1, 1, 1]
 process_delta(Δ) = Δ
 smooth_step(k, x) = 1 / 2 + tanh(k * x) / 2
@@ -22,8 +21,7 @@ smooth_step(k) = Base.Fix1(smooth_step, k)
     f = p.smooth_step
     Δmin = p.delta_mins
     Δmax = p.delta_maxes
-    extra_shifts = p.extra_shifts * T
-    shifts = (@SVector [0.0, T / 3, 2T / 3]) + extra_shifts
+    shifts = (@SVector [0, T / 3, 2T / 3])
     fi(i) = Δmin[i] + (Δmax[i] - Δmin[i]) * f(cos(2pi * (t - shifts[i]) / T))
     ntuple(fi, Val(3))
 end
@@ -38,8 +36,7 @@ function setup_problem(dict)
     mtype = get(dict, :mtype, SMatrix{d,d,ComplexF64})
     vtype = get(dict, :vtype, SVector{d,ComplexF64})
     P = parity_operators(totalparity, mtype)
-    extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
-    ramp = RampProtocol(Δmin, Δmax, T, k, extra_shifts)
+    ramp = RampProtocol(Δmin, Δmax, T, k)
     tspan = (0.0, 2 * T)
     ts = range(0, tspan[2], steps)
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan, :P => P)

@@ -177,7 +177,6 @@ analytical_gates_fidelities = zeros(Float64, gridpoints)
         :γ => γ,
         :u0 => U0,
         # :opt_kwargs => (; xatol=0, xrtol=0, atol=0, rtol=0, verbose=false)
-        :extra_shifts => [-0.05, 0, 0]
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)

@@ -19,7 +19,6 @@ param_dict = Dict(
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     # :γ => γ, #Majorana basis
     :initial => (:L, :L̃) => 1, #Initial state. Use I for the identity matrix.
-    :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
     :totalparity => 1
 )
 
