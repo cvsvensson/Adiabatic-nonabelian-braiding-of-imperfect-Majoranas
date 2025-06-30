@@ -19,7 +19,7 @@ param_dict = Dict(
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     # :γ => γ, #Majorana basis
     :initial => (:L, :L̃) => 1, #Initial state. Use I for the identity matrix.
-    :totalparity => 1
+    :totalparity => -1 # The protocol works best for -1, as the gap closes for totalparity = 1 and ζ = 1
 )
 
 ## Solve the system
@@ -95,7 +95,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :initial => I,
-        :totalparity => 1
+        :totalparity => -1
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
