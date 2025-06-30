@@ -6,10 +6,8 @@ using ProgressMeter
 using StaticArrays
 using Base.Threads
 ##
-# γ = get_majorana_basis()
-N = 3#length(γ.fermion_basis)
+N = 3
 d = 2^(N - 1)
-# use_static_arrays = true
 mtype, vtype = SMatrix{d,d,ComplexF64}, SVector{d,ComplexF64}
 
 ## Initial state and identity matrix
@@ -20,7 +18,6 @@ U0 = mtype(I(d))
 param_dict = Dict(
     :mtype => mtype, #Matrix type for the Hamiltonian
     :ζ => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
-    :ϵs => (0, 0, 0), #Dot energy levels
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
@@ -32,7 +29,7 @@ param_dict = Dict(
     # :γ => γ, #Majorana basis
     :u0 => U0, #Initial state. Use U0 for the identity matrix.
     :extra_shifts => [0, 0, 0], #Shifts the three Δ pulses. Given as fractions of T
-    :totalparity => -1
+    :totalparity => 1
 )
 
 ## Solve the system
@@ -46,7 +43,7 @@ visualize_spectrum(prob)
 visualize_deltas(prob)
 visualize_analytic_parameters(prob)
 visualize_protocol(prob)
-visualize_parities(prob)
+visualize_parities(sol, prob)
 ## Calculate full solution for T and 2T and calculate the fidelities
 gridpoints = 10
 T_arr = range(1e1, 1e3, length=gridpoints)
@@ -58,7 +55,6 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         local_dict = Dict(
             :mtype => mtype,
             :ζ => ζ,
-            :ϵs => (0, 0, 0),
             :T => T,
             :Δmax => 1 * [1 / 3, 1 / 2, 1],
             :Δmin => 1e-6 * [2, 1 / 3, 1],
@@ -100,7 +96,6 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
     local_dict = Dict(
         :mtype => mtype,
         :ζ => ζ .* (1, 1, 1),
-        :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
@@ -150,7 +145,6 @@ plot(deltas, analytical_angles, label="analytical_angles", lw=2, frame=:box)
 ## Compare hamiltonian from M to the one from the diagonal_majoranas function at some time
 param_dict = Dict(
     :ζ => 0.2, #Majorana overlaps. Number or triplet of numbers
-    :ϵs => (0, 0, 0), #Dot energy levels
     :T => 5e3, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
@@ -180,7 +174,6 @@ component_array = []
 for (idx, ζ) in collect(enumerate(zetas))
     local_dict = Dict(
         :ζ => ζ,
-        :ϵs => (0, 0, 0),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],

@@ -31,7 +31,7 @@ end
 (ramp::RampProtocol)(t) = get_deltas(ramp, t)
 
 function setup_problem(dict)
-    @unpack ϵs, u0, ζ, Δmin, Δmax, T, k, steps, correction, totalparity, mtype = dict
+    @unpack u0, ζ, Δmin, Δmax, T, k, steps, correction, totalparity, mtype = dict
     P = parity_operators(totalparity, mtype)
     extra_shifts = get(dict, :extra_shifts, @SVector [0, 0, 0])
     ramp = RampProtocol(Δmin, Δmax, T, k, extra_shifts)
@@ -39,7 +39,7 @@ function setup_problem(dict)
     ts = range(0, tspan[2], steps)
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan, :P => P)
     corr = setup_correction(correction, newdict)
-    p = (ramp, ϵs, ζ, corr, P)
+    p = (ramp, ζ, corr, P)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
     H(p, t) = ham_with_corrections(p, t)
     op = interpolate ? get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)

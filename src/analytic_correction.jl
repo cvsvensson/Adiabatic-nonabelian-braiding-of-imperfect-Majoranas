@@ -121,7 +121,6 @@ end
 
     param_dict = Dict(
         :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
-        :ϵs => (0, 0, 0), #Dot energy levels
         :T => 1e4, #Maximum time
         :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
         :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
@@ -156,7 +155,6 @@ end
 
     param_dict = Dict(
         :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
-        :ϵs => (0, 0, 0), #Dot energy levels
         :T => 1e4, #Maximum time
         :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
         :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers

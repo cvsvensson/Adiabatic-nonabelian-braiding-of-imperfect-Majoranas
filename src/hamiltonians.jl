@@ -1,15 +1,12 @@
 
 ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
 
-_ham_with_corrections(ramp, ϵs, ζ::Number, correction, P, t, α=1) = _ham_with_corrections(ramp, ϵs, (ζ, ζ, ζ), correction, P, t, α)
-function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
+_ham_with_corrections(ramp, ζ::Number, correction, P, t, α=1) = _ham_with_corrections(ramp, (ζ, ζ, ζ), correction, P, t, α)
+function _ham_with_corrections(ramp, ζs, correction, P, t, α=1)
     Δs = ramp(t) ./ (1, sqrt(1 + ζs[1]^2) * sqrt(1 + ζs[2]^2), sqrt(1 + ζs[1]^2) * sqrt(1 + ζs[3]^2)) # divide to normalize the hamiltonian
     Ham = (Δs[1] * P[:M, :M̃] +
            Δs[2] * P[:M, :L] +
            Δs[3] * P[:M, :R] +
-           ϵs[1] * P[:M, :M̃] +
-           ϵs[2] * P[:L, :L̃] +
-           ϵs[3] * P[:R, :R̃] +
            _error_ham(Δs, ζs, P))
     Ham += correction(t, Δs, ζs, P, Ham)
     return Ham * α
@@ -60,13 +57,13 @@ end
 struct OptimizedSimpleCorrection <: AbstractCorrection end
 
 function setup_correction(::OptimizedSimpleCorrection, d::Dict)
-    return optimized_simple_correction(d[:ramp], d[:ϵs], d[:ζ], d[:P], d[:ts])
+    return optimized_simple_correction(d[:ramp], d[:ζ], d[:P], d[:ts])
 end
-function optimized_simple_correction(ramp, ϵs, ζs, P, ts; alg=BFGS())
+function optimized_simple_correction(ramp, ζs, P, ts; alg=BFGS())
     H = ham_with_corrections
     results = Float64[]
     function cost_function(x, t)
-        vals = eigvals(H((ramp, ϵs, ζs, SimpleCorrection(x), P), t))
+        vals = eigvals(H((ramp, ζs, SimpleCorrection(x), P), t))
         return vals[2] - vals[1]
     end
     for t in ts
@@ -85,15 +82,15 @@ struct OptimizedIndependentSimpleCorrection <: AbstractCorrection
 end
 
 function setup_correction(corr::OptimizedIndependentSimpleCorrection, d::Dict)
-    return optimized_independent_simple_correction(d[:ramp], d[:ϵs], d[:ζ], d[:P], d[:ts], d[:T]; penalty_factor=corr.penalty_factor, maxtime=corr.maxtime)
+    return optimized_independent_simple_correction(d[:ramp], d[:ζ], d[:P], d[:ts], d[:T]; penalty_factor=corr.penalty_factor, maxtime=corr.maxtime)
 end
 
-function optimized_independent_simple_correction(ramp, ϵs, ζs, P, ts, T; penalty_factor, maxtime, alg=Fminbox(NelderMead()))
+function optimized_independent_simple_correction(ramp, ζs, P, ts, T; penalty_factor, maxtime, alg=Fminbox(NelderMead()))
     H = ham_with_corrections
     results = Vector{Float64}[]
     # define a cost function that x as a vector instead of a scalar
     function cost_function(x::Vector, t)
-        ham = Hermitian(H((ramp, ϵs, ζs, IndependentSimpleCorrection(x), P), t))
+        ham = Hermitian(H((ramp, ζs, IndependentSimpleCorrection(x), P), t))
         vals = eigvals(ham)
         return vals[2] - vals[1]
     end

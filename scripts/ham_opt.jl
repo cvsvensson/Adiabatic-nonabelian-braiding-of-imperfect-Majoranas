@@ -29,12 +29,11 @@ u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M,:M̃] + P[:L, :L̃] + P[:R
 T = 1e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
-ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
 ζ = 0.1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
 ramp = RampProtocol([2, 1 / 3, 1] .* Δmin, [1 / 3, 1 / 2, 1] .* Δmax, T, k)
-p = (ramp, ϵs, ζs, 1, 1, P)
+p = (ramp, ζs, 1, 1, P)
 H = ham_with_corrections
 # H! = ham_with_corrections!
 M = get_op(H, H!, p)
@@ -43,7 +42,7 @@ ts = range(0, tspan[2], 1000)
 ##
 
 function cost_function(x, t)
-    vals = eigvals(H((ramp, ϵs, ζs, x, 0, P), t))
+    vals = eigvals(H((ramp, ζs, x, 0, P), t))
     return vals[2] - vals[1]
 end
 
@@ -69,10 +68,10 @@ int = cubic_spline_interpolation(ts, results)
 plot(ts, int(ts))
 plot!(ts, results)
 
-# function optimized_corrmax(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
+# function optimized_corrmax(H, (ramp, ζs, P), ts; alg=BFGS())
 #     results = Float64[]
 #     function cost_function(x, t)
-#         vals = eigvals(H((ramp, ϵs, ζs, x, 0, P), t))
+#         vals = eigvals(H((ramp, ζs, x, 0, P), t))
 #         return vals[2] - vals[1]
 #     end
 #     for t in ts

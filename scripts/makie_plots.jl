@@ -34,7 +34,6 @@ parities_arr = zeros(ComplexF64, length(zetas), length(parity_measurements))
 @time @showprogress @threads for (idx, ζ) in collect(enumerate(zetas))
     local_dict = Dict(
         :ζ => ζ,
-        :ϵs => (0, 0, 0),
         :T => 2e3,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-6 * [2, 1 / 3, 1],
@@ -73,7 +72,6 @@ parities_arr_2D = zeros(ComplexF64, gridpoints, gridpoints, length(parity_measur
     Threads.@threads for idx_z in 1:gridpoints
         local_dict = Dict(
             :ζ => zetas[idx_z],
-            :ϵs => (0, 0, 0),
             :T => T,
             :Δmax => 1 * [1 / 3, 1 / 2, 1],
             :Δmin => 1e-6 * [2, 1 / 3, 1],
@@ -106,7 +104,6 @@ double_braid_fidelity = zero(single_braid_fidelity)
     Threads.@threads for (idx_z, ζ) in collect(enumerate(zetas))
         local_dict = Dict(
             :ζ => ζ,
-            :ϵs => (0, 0, 0),
             :T => T,
             :Δmax => 1 * [1 / 3, 1 / 2, 1],
             :Δmin => 1e-6 * [2, 1 / 3, 1],
@@ -165,7 +162,6 @@ analytical_gates_fidelities = zeros(Float64, gridpoints)
 @time @showprogress @threads for (n, ζ) in collect(enumerate(zetas))
     local_dict = Dict(
         :ζ => ζ,
-        :ϵs => (0, 0, 0),
         :T => 4e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],

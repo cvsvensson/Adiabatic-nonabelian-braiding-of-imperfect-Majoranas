@@ -49,7 +49,6 @@ u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M,:M̃] + P[:L, :L̃] + P[:R
 T = 1e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
-ϵs = (0.0, 0.0, 0.0) # Energy overlaps between Majoranas ordered as ϵ01, ϵ24, ϵ35
 ζ = 9.9e-1
 ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
 tspan = (0.0, 2T)
@@ -58,7 +57,7 @@ dt = 5
 ts = range(0, tspan[2], Int(tspan[2] / dt))
 ramp = RampProtocol([1, 1, 1] .* Δmin, [1, 1, 1] .* Δmax, T, k)
 corr = MajoranaBraiding.NoCorrection()
-p = (ramp, ϵs, ζs, corr, P)
+p = (ramp, ζs, corr, P)
 remove_labels = [[2,4],[2,5]]
 constrained_basis = MajoranaBraiding.remove_from_basis(remove_labels, P)
 
