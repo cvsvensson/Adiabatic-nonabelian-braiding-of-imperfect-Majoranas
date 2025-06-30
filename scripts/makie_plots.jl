@@ -168,7 +168,6 @@ analytical_gates_fidelities = zeros(Float64, gridpoints)
         :k => 5e1,
         :steps => 50,
         :correction => InterpolatedExactSimpleCorrection(),
-        # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,

@@ -92,7 +92,6 @@ numerical_to_effective_analytical_fidelity = zeros(Float64, gridpoints)
         :correction => InterpolatedExactSimpleCorrection(),
         # :correction => OptimizedSimpleCorrection(),
         # :correction => OptimizedIndependentSimpleCorrection(30, 1e-2),
-        # :correction => EigenEnergyCorrection(),
         # :correction => NoCorrection(),
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,

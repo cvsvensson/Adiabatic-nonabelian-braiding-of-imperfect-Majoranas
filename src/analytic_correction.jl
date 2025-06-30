@@ -100,8 +100,7 @@ end
 
 @testitem "Energy splitting" begin
     using StaticArrays, LinearAlgebra
-    γ = get_majorana_basis()
-    N = length(γ.fermion_basis)
+    N = 3
     mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
 
     T = 10
@@ -110,7 +109,7 @@ end
     λ = 0.2
     corr = SimpleCorrection(λ)
     totalparity = -1
-    P = parity_operators(γ, totalparity, mtype)
+    P = parity_operators(totalparity, mtype)
     ζ = 0.5
     p = (ramp, (0, 0, 0), ζ, corr, P)
 

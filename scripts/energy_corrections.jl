@@ -21,7 +21,7 @@ mtype, vtype = MajoranaBraiding.matrix_vec_types(use_static_arrays, inplace, N)
 P = parity_operators(γ, parity, mtype)
 H = ham_with_corrections
 ## Parameters
-u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M,:M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
+u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] + P[:L, :L̃] + P[:R, :R̃]), 1:1).vectors))))
 Δmax = 1
 T = 2e3 / Δmax
 k = 1e1
@@ -38,16 +38,14 @@ independentsimplecorr = optimized_independent_simple_correction(H, (ramp, ζs, P
 analyticsimplecorr = analytical_exact_simple_correction(ζ, ramp, ts)
 remove_labels = [[0, 1], [0, 2], [0, 3]]
 constrained_basis = MajoranaBraiding.remove_from_basis(remove_labels, P)
-eigencorrection = EigenEnergyCorrection()
-weakcorrection = WeakEnergyCorrection(constrained_basis)
 
-corrections = [simplecorr, independentsimplecorr, analyticsimplecorr, eigencorrection, weakcorrection, SimpleCorrection() + eigencorrection, SimpleCorrection(10) + eigencorrection]
+corrections = [simplecorr, independentsimplecorr, analyticsimplecorr]
 ##
 
 for (n, corr) in enumerate(corrections)
     p = (ramp, ζs, corr, P)
     pl = visualize_protocol(H, ramp, ζs, corr, P, ts)
-    annotate!([(:left, :top, "Correction: $n")]) 
+    annotate!([(:left, :top, "Correction: $n")])
     display(pl)
     # deltas = stack([ramp(t) for t in ts])'
     # delta_plot = plot(ts, deltas, label=["Δ01" "Δ02" "Δ03"], xlabel="t", ls=[:solid :dash :dot], lw=3)
