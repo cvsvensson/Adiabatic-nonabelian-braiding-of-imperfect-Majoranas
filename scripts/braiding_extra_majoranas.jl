@@ -1,7 +1,6 @@
 using MajoranaBraiding
 using LinearAlgebra
 using Plots
-using OrdinaryDiffEqTsit5
 using ProgressMeter
 using Base.Threads
 ##
@@ -22,10 +21,10 @@ param_dict = Dict(
 )
 
 ## Solve the system
-prob = setup_problem(param_dict);
+@time prob = setup_problem(param_dict);
+@time sol = solve(prob);
 stack([prob[:correction].scaling(t) for t in prob[:ts]]) |> plot
 ##
-@time sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6);
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
 ##
 visualize_spectrum(prob)
@@ -51,10 +50,10 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => true,
             :totalparity => -1,
-            :initial => I
+            :initial => I,
         )
         prob = setup_problem(local_dict)
-        sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, T, 2T])
+        sol = solve(prob; saveat=[T, 2T])
         proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
         # proj = Diagonal([1, 0, 0, 1])
         single_braid_gate = majorana_exchange(-prob[:P][:L, :R])
@@ -98,7 +97,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     )
     T = local_dict[:T]
     prob = setup_problem(local_dict)
-    sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6, saveat=[0, 2T])
+    sol = solve(prob; saveat=[2T])
     proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
     majorana_double_braid = majorana_exchange(prob[:P][:L, :R])^2
     double_kato = single_braid_gate_kato(prob)^2
@@ -138,7 +137,6 @@ param_dict = Dict(
     :totalparity => 1
 )
 prob = setup_problem(param_dict)
-sol = solve(prob[:odeprob], Tsit5(), abstol=1e-6, reltol=1e-6)
 # maj_hams1 = [1im * prod(diagonal_majoranas(prob, t))[subinds,subinds] for t in prob[:ts]]
 subinds = γ.fermion_basis.symmetry.qntoinds[prob[:totalparity]]
 hams = [prob[:op](Matrix(I, 4, 4), prob[:p], t) for t in prob[:ts]]

@@ -7,6 +7,7 @@ using Roots
 using Plots
 using UnPack
 using OrdinaryDiffEqCore
+using OrdinaryDiffEqTsit5
 using FermionicHilbertSpaces
 
 export RampProtocol

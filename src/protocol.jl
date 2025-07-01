@@ -49,6 +49,9 @@ function setup_problem(dict)
     prob = ODEProblem{false}(op, u0, tspan, p)
     return Dict(newdict..., :correction => corr, :p => p, :op => op, :odeprob => prob, :H => H, :u0 => _u0)
 end
+function OrdinaryDiffEqCore.solve(prob::Dict, alg=Tsit5(); abstol=1e-6, reltol=1e-6, saveat=range(0, 2prob[:T], 200), kwargs...)
+    solve(prob[:odeprob], alg; abstol, reltol, saveat, kwargs...)
+end
 function process_initial_state(u0::Pair{<:Tuple,Int}, P, (mtype, vtype))
     label = first(u0)
     parity = last(u0)
