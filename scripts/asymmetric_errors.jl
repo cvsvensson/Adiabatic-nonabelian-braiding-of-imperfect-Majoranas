@@ -6,7 +6,7 @@ using Base.Threads
 using LaTeXStrings
 ##
 gridpoints = 20
-ηs = (range(0, 1.1, gridpoints)) #range(0, 1, length=gridpoints)
+ηs = (range(0, 1.5, gridpoints)) #range(0, 1, length=gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
@@ -15,7 +15,7 @@ analytical_fidelity = zeros(Float64, gridpoints)
 fidelities = zeros(Float64, gridpoints)
 fidelity_numerics_analytic = zeros(Float64, gridpoints)
 uncorrected_double_braid_majorana_fidelity = zeros(Float64, gridpoints)
-asymmetry = (1.4, 0.7, 0.3)
+asymmetry = (1, 0.5, 0.2)
 effective_η_scaling = MajoranaBraiding.effective_η(asymmetry)
 @time @showprogress @threads for (n, η) in collect(enumerate(ηs))
     local_dict = Dict(

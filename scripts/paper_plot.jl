@@ -19,7 +19,7 @@ uncorrected_double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 @time @showprogress @threads for (n, η) in collect(enumerate(ηs))
     local_dict = Dict(
         :η => η,
-        :T => 4e2,
+        :T => 2e2,
         :k => 1e1,
         :steps => 1000,
         :correction => InterpolatedExactSimpleCorrection(),
