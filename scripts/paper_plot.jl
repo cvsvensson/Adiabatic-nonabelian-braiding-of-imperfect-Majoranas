@@ -4,9 +4,9 @@ using Plots
 using ProgressMeter
 using Base.Threads
 using LaTeXStrings
-default(; :fontfamily => "Computer Modern")
+
 ##
-gridpoints = 1000
+gridpoints = 2000
 ηs = (range(0, 1, gridpoints)) #range(0, 1, length=gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
@@ -49,16 +49,23 @@ uncorrected_double_braid_majorana_fidelity = zeros(Float64, gridpoints)
     uncorrected_sol = solve(setup_problem(local_dict); saveat=[2T])
     uncorrected_double_braid_majorana_fidelity[n] = gate_fidelity(majorana_double_braid, uncorrected_sol(2T), proj)
 end
+## Plot settings
+# gr() # Faster
+pgfplotsx() # Needs LaTeX installation
+colors = ["#FFC000", "#00B0F0", "#92D050"]
+# colors = 1:3 # More contrast
 ## Check that the corrected protocol agrees with the analytical fidelity
-p = plot(; frame=:box, ylabel=L"S", xlabel=L"η", size=0.6 .* (600, 400), labelfontsize=15, ylims=(-0.03, 1.03))
-plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected"; marker=false, lw=2)
-plot!(p, ηs, analytical_fidelity, lw=3, label="Analytical", marker=false)
-plot!(p, ηs, double_braid_majorana_fidelity, lw=3, label="Corrected", marker=false, ls=:dash)
+p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\eta", size=0.7 .* (600, 400), xlabelfontsize=15, legendfontsize=9, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]), legendposition=:topright)
+plot!(p, ηs, analytical_fidelity, lw=3, label="Corrected: adiabatic", c=colors[3])
+plot!(p, ηs, double_braid_majorana_fidelity, lw=3, label="Corrected: finite time", ls=:dash, c=colors[1])
+plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected", seriestype=:stepmid, lw=1, c=colors[2])
+##
+savefig(p, "majorana_similarity_SI.pdf")
 
 ## Figure for the paper 
-colors = ["#FFC000", "#00B0F0", "#92D050"]
-p = plot(; frame=:box, ylabel="MBS Similarity \$S(η)\$", xlabel=L"η", size=0.6 .* (600, 400), xlabelfontsize=15, legendfontsize=9, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]))
-plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected"; marker=false, lw=2, c=colors[2])
-plot!(p, ηs, analytical_fidelity, lw=2, label="Corrected", marker=false, c=colors[3])
+p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\eta", size=0.6 .* (600, 400), xlabelfontsize=15, legendfontsize=9, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]), legendposition=:topright, tex_output_standalone=true)
+plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected", seriestype=:stepmid, lw=1, c=colors[2])
+plot!(p, ηs, analytical_fidelity, lw=2, label="Corrected", c=colors[3])
+##
 savefig(p, "majorana_similarity.pdf")
 # plot!(p, ηs, double_braid_majorana_fidelity, lw=3, label="Corrected", marker=false, ls=:dash, c=colors[3])

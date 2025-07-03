@@ -5,7 +5,7 @@ using ProgressMeter
 using Base.Threads
 using LaTeXStrings
 ##
-gridpoints = 30
+gridpoints = 20
 ηs = (range(0, 1.1, gridpoints)) #range(0, 1, length=gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
@@ -50,12 +50,18 @@ effective_η_scaling = MajoranaBraiding.effective_η(asymmetry)
     uncorrected_sol = solve(setup_problem(local_dict); saveat=[2T])
     uncorrected_double_braid_majorana_fidelity[n] = gate_fidelity(majorana_double_braid, uncorrected_sol(2T), proj)
 end
+## Plot settings
+# gr() # Faster
+pgfplotsx() # Needs LaTeX installation
+colors = ["#FFC000", "#00B0F0", "#92D050"] # Matches existing figures
+#colors = 1:3 # More contrast
 ##
-default(; :fontfamily => "Computer Modern")
-p = plot(; frame=:box, ylabel=L"S", xlabel=L"\tilde{\eta} = \sqrt{η_1\sqrt{\eta_2\eta_3}}", size=0.8 .* (600, 400), labelfontsize=15, title="Asymmetric correction protocol", ylims=(-0.03, 1.03))
 effective_ηs = effective_η_scaling * ηs
-# plot!(p, effective_ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected"; marker=false, lw=2)
-plot!(p, effective_ηs, double_braid_majorana_fidelity, lw=3, label="Corrected", marker=true, ls=:dash)
-plot!(p, effective_ηs, analytical_fidelity, lw=3, label=L"S(\tilde{η})", marker=false)
-# plot!(p, effective_ηs, effective_ηs, lw=3, label="effective η", marker=false)
-# plot!(p, effective_ηs, ηs, lw=3, label="η", marker=false)
+p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\tilde{\eta} = \sqrt{\eta_1\sqrt{\eta_2\eta_3}}", size=0.7 .* (600, 400), xlabelfontsize=15, legendfontsize=10, ylims=(-0.03, 1.03), legendposition=:bottomleft)
+plot!(p, effective_ηs, analytical_fidelity, lw=3, label=L"Analytic curve with $\tilde{\eta}$", c=colors[3])
+scatter!(p, effective_ηs, double_braid_majorana_fidelity, label="Asymmetric correction protocol", c=colors[1], marker=true)
+# plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected"; lw=2, c=colors[2])
+##
+savefig(p, "majorana_similarity_asymmetric.pdf")
+# savefig(p, "majorana_similarity_asymmetric.tex")
+# savefig(p, "majorana_similarity_asymmetric.tikz")
