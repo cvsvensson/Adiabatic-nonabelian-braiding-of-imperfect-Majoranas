@@ -7,8 +7,8 @@ using Base.Threads
 param_dict = Dict(
     :η => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :T => 1e4, #Maximum time
-    :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
-    :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+    # :ρmax => 1 * (rand(3) .+ 0.5), #Largest values of ρs. Number or triplet of numbers
+    # :ρmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of ρs. Number or triplet of numbers
     :k => 1e1, #Determines the slope of the ramp
     :steps => 500, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
@@ -28,7 +28,7 @@ stack([prob[:correction].scaling(t) for t in prob[:ts]]) |> plot
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t")
 ##
 visualize_spectrum(prob)
-visualize_deltas(prob)
+visualize_rhos(prob)
 visualize_analytic_parameters(prob)
 visualize_protocol(prob)
 visualize_parities(sol, prob)
@@ -43,8 +43,8 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         local_dict = Dict(
             :η => η,
             :T => T,
-            :Δmax => 1 * [1 / 3, 1 / 2, 1],
-            :Δmin => 1e-6 * [2, 1 / 3, 1],
+            :ρmax => 1 * [1 / 3, 1 / 2, 1],
+            :ρmin => 1e-6 * [2, 1 / 3, 1],
             :k => 1e1,
             :steps => 200,
             :correction => InterpolatedExactSimpleCorrection(),
@@ -82,8 +82,8 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     local_dict = Dict(
         :η => η .* (1, 1, 1),
         :T => 1e4,
-        :Δmax => 1 * [1 / 3, 1 / 2, 1],
-        :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
+        :ρmax => 1 * [1 / 3, 1 / 2, 1],
+        :ρmin => 0 * 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 1000,
         :correction => InterpolatedExactSimpleCorrection(),
@@ -126,8 +126,8 @@ plot(ηs, analytical_angles, label="analytical_angles", lw=2, frame=:box)
 param_dict = Dict(
     :η => 0.2, #Majorana overlaps. Number or triplet of numbers
     :T => 5e3, #Maximum time
-    :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
-    :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+    :ρmax => 1 * (rand(3) .+ 0.5), #Largest values of ρs. Number or triplet of numbers
+    :ρmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of ρs. Number or triplet of numbers
     :k => 2e1, #Determines the slope of the ramp
     :steps => 2000, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(),
@@ -154,8 +154,8 @@ for (idx, η) in collect(enumerate(zetas))
     local_dict = Dict(
         :η => η,
         :T => 1e4,
-        :Δmax => 1 * [1 / 3, 1 / 2, 1],
-        :Δmin => 1e-10 * [2, 1 / 3, 1],
+        :ρmax => 1 * [1 / 3, 1 / 2, 1],
+        :ρmin => 1e-10 * [2, 1 / 3, 1],
         :k => 2e1,
         :steps => 4000,
         :correction => InterpolatedExactSimpleCorrection(),

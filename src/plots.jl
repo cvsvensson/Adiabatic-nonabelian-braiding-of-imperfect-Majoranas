@@ -4,14 +4,14 @@ function visualize_spectrum(H, p, ts, T)
     plot(ts / T, mapslices(v -> v[2:end] .- v[1], spectrum, dims=2), xlabel="t/T", ls=[:solid :dash :dot], ylabel="Eᵢ-E₀", labels=[1, 2, 3]', yscale=:log10, ylims=(1e-16, 1e1), lw=2, frame=:box)
 end
 
-visualize_deltas(d::Dict) = visualize_deltas(d[:ramp], d[:ts], d[:T])
-function visualize_deltas(ramp, ts, T)
-    deltas = stack([ramp(t) for t in ts])'
-    plot(ts / T, deltas, label=["ΔMM̃" "ΔML" "ΔMR"], ylabel="Δs", xlabel="t/T", ls=[:solid :dash :dot], lw=3, frame=:box)
+visualize_rhos(d::Dict) = visualize_rhos(d[:ramp], d[:ts], d[:T])
+function visualize_rhos(ramp, ts, T)
+    ρs = stack([ramp(t) for t in ts])'
+    plot(ts / T, ρs, label=["ρMM̃" "ρML" "ρMR"], ylabel="ρs", xlabel="t/T", ls=[:solid :dash :dot], lw=3, frame=:box)
 end
 function visualize_protocol(dict::Dict)
     energyplot = visualize_spectrum(dict)
-    deltaplot = visualize_deltas(dict)
+    deltaplot = visualize_rhos(dict)
     componentplot = visualize_analytic_parameters(dict)
     xlabel!(energyplot, "")
     xlabel!(deltaplot, "")

@@ -5,45 +5,40 @@ function parity_operators(totalparity, mtype)
     Dict((l1, l2) => mtype(matrix_representation(1im * γ[l1] * γ[l2], H)) for (l1, l2) in Base.product(MajoranaLabels, MajoranaLabels) if l1 != l2)
 end
 
-struct RampProtocol{Mi,Ma,T,F}
-    delta_mins::Mi
-    delta_maxes::Ma
+struct RampProtocol{T,F}
     total_time::T
     smooth_step::F
-    function RampProtocol(Δmin::Mi, Δmax::Ma, total_time::T, smooth_step::F) where {Mi,Ma,T,F}
-        Δmin = process_delta(Δmin)
-        Δmax = process_delta(Δmax)
-        new{typeof(Δmin),typeof(Δmax),T,F}(Δmin, Δmax, total_time, smooth_step)
+    function RampProtocol(total_time::T, smooth_step::F) where {T,F}
+        new{T,F}(total_time, smooth_step)
     end
 end
 
-RampProtocol(Δmin, Δmax, T, k::Number) = RampProtocol(Δmin, Δmax, T, smooth_step(k))
-process_delta(Δ::Number) = Δ .* [1, 1, 1]
-process_delta(Δ) = Δ
+RampProtocol(T, k::Number) = RampProtocol(T, smooth_step(k))
 smooth_step(k, x) = 1 / 2 + tanh(k * x) / 2
 smooth_step(k) = Base.Fix1(smooth_step, k)
 
-@inbounds function get_deltas(p::RampProtocol, t)
-    T = p.total_time
-    f = p.smooth_step
-    Δmin = p.delta_mins
-    Δmax = p.delta_maxes
-    shifts = (@SVector [0, T / 3, 2T / 3])
-    fi(i) = Δmin[i] + (Δmax[i] - Δmin[i]) * f(cos(2pi * (t - shifts[i]) / T))
-    ntuple(fi, Val(3))
+@inbounds function (ramp::RampProtocol)(t)
+    T = ramp.total_time
+    f = ramp.smooth_step
+    # shifts = (@SVector [0, T / 3, 2T / 3])
+    # fi(i) = f(cos(2pi * (t - shifts[i]) / T))
+    # ρs = ntuple(fi, Val(3))
+    ρ1 = f(cos(2pi * (t - 0) / T))
+    ρ2 = f(cos(2pi * (t - T / 3) / T))
+    ρ3 = f(cos(2pi * (t - 2T / 3) / T))
+    # (cos(2pi * (t - shifts[i]) / T), cos(2pi * (t - shifts[i]) / T), cos(2pi * (t - shifts[i]) / T
+    return (ρ1, ρ2, ρ3) ./ sqrt(ρ1^2 + ρ2^2 + ρ3^2) # normalize
 end
 
-(ramp::RampProtocol)(t) = get_deltas(ramp, t)
-
 function setup_problem(dict)
-    @unpack η, Δmin, Δmax, T, k, steps, correction, totalparity = dict
+    @unpack η, T, k, steps, correction, totalparity = dict
     N = 3
     d = 2^(N - 1)
     _u0 = dict[:initial]
     mtype = get(dict, :mtype, SMatrix{d,d,ComplexF64})
     vtype = get(dict, :vtype, SVector{d,ComplexF64})
     P = parity_operators(totalparity, mtype)
-    ramp = RampProtocol(Δmin, Δmax, T, k)
+    ramp = RampProtocol(T, k)
     tspan = (0.0, 2 * T)
     ts = range(0, tspan[2], steps)
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan, :P => P)

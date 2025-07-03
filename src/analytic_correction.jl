@@ -40,11 +40,11 @@ end
 
 analytic_parameters(λ, η::Tuple, ramp, t) = analytic_parameters(λ, effective_η(η), ramp, t)
 function analytic_parameters(λ, η, ramp, t)
-    Δs = ramp(t) ./ (1, (1 + η), (1 + η)) # divide to normalize the hamiltonian
-    Δ = sqrt(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    Δ23 = √(Δs[2]^2 + Δs[3]^2)
-    θ = atan(Δ23, Δs[1])
-    ϕ = atan(Δs[3], Δs[2])
+    ρs = ramp(t) #./ (1, (1 + η), (1 + η)) # divide to normalize the hamiltonian
+    Δ = 1#sqrt(ρs[1]^2 + ρs[2]^2 + ρs[3]^2)
+    ρ23 = √(ρs[2]^2 + ρs[3]^2)
+    θ = atan(ρ23, ρs[1])
+    ϕ = atan(ρs[3], ρs[2])
     λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
     ηtilde = η * sin(θ)^2 - λ * cos(θ)
     θ_μ = -1 / 2 * atan(2 * λtilde * ηtilde, 1 + λtilde^2 - ηtilde^2)
@@ -107,8 +107,8 @@ end
     param_dict = Dict(
         :η => 0.7, #Majorana overlaps. Number or triplet of numbers
         :T => 1e4, #Maximum time
-        :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
-        :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+        :ρmax => 1 * (rand(3) .+ 0.5), #Largest values of ρs. Number or triplet of numbers
+        :ρmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of ρs. Number or triplet of numbers
         :k => 2e1, #Determines the slope of the ramp
         :steps => 2000, #Number of timesteps for interpolations
         :correction => NoCorrection(), #Different corrections are available. This is the most relevant one for the paper
@@ -141,8 +141,8 @@ end
     param_dict = Dict(
         :η => 0.7, #Majorana overlaps. Number or triplet of numbers
         :T => 1e4, #Maximum time
-        :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
-        :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
+        :ρmax => 1 * (rand(3) .+ 0.5), #Largest values of ρs. Number or triplet of numbers
+        :ρmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of ρs. Number or triplet of numbers
         :k => 2e1, #Determines the slope of the ramp
         :steps => 2000, #Number of timesteps for interpolations
         :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper

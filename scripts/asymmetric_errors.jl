@@ -20,9 +20,9 @@ effective_η_scaling = MajoranaBraiding.effective_η(asymmetry)
 @time @showprogress @threads for (n, η) in collect(enumerate(ηs))
     local_dict = Dict(
         :η => η .* asymmetry,#η .* (1.2, 0.8, 0.6),
-        :T => 1e3,
-        :Δmax => 1 * [1 / 3, 1 / 2, 1],
-        :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
+        :T => 2e3,
+        # :Δmax => 1 * [1 / 3, 1 / 2, 1],
+        # :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
         :k => 1e1,
         :steps => 1000,
         # :correction => InterpolatedExactSimpleCorrection(),

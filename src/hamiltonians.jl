@@ -3,22 +3,22 @@ ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
 
 _ham_with_corrections(ramp, η::Number, correction, P, t, α=1) = _ham_with_corrections(ramp, (η, η, η), correction, P, t, α)
 function _ham_with_corrections(ramp, ηs, correction, P, t, α=1)
-    Δs = ramp(t) ./ (1, sqrt(1 + ηs[1]) * sqrt(1 + ηs[2]), sqrt(1 + ηs[1]) * sqrt(1 + ηs[3])) # divide to normalize the hamiltonian
-    Ham = (Δs[1] * P[:M, :M̃] +
-           Δs[2] * P[:M, :L] +
-           Δs[3] * P[:M, :R] +
-           _error_ham(Δs, ηs, P))
-    Ham += correction(t, Δs, ηs, P, Ham)
+    ρs = ramp(t) #./ (1, sqrt(1 + ηs[1]) * sqrt(1 + ηs[2]), sqrt(1 + ηs[1]) * sqrt(1 + ηs[3])) # divide to normalize the hamiltonian
+    Ham = (ρs[1] * P[:M, :M̃] +
+           ρs[2] * P[:M, :L] +
+           ρs[3] * P[:M, :R] +
+           _error_ham(ρs, ηs, P))
+    Ham += correction(t, ρs, ηs, P, Ham)
     return Ham * α
 end
-_error_ham(Δs, η::Number, P) = _error_ham(Δs, (η, η, η), P)
-_error_ham(Δs, ηs, P) = +Δs[2] * sqrt(ηs[1] * ηs[2]) * P[:M̃, :L̃] + Δs[3] * sqrt(ηs[1] * ηs[3]) * P[:M̃, :R̃]
+_error_ham(ρs, η::Number, P) = _error_ham(ρs, (η, η, η), P)
+_error_ham(ρs, ηs, P) = ρs[2] * sqrt(ηs[1] * ηs[2]) * P[:M̃, :L̃] + ρs[3] * sqrt(ηs[1] * ηs[3]) * P[:M̃, :R̃]
 
 
 abstract type AbstractCorrection end
-(corr::AbstractCorrection)(t, Δs, ηs, P, ham) = error("(corr::C)(t, Δs, ηs, P, ham) not implemented for C=$(typeof(corr))")
+(corr::AbstractCorrection)(t, ρs, ηs, P, ham) = error("(corr::C)(t, ρs, ηs, P, ham) not implemented for C=$(typeof(corr))")
 struct NoCorrection <: AbstractCorrection end
-(corr::NoCorrection)(t, Δs, ηs, P, ham) = 0I
+(corr::NoCorrection)(t, ρs, ηs, P, ham) = 0I
 struct SimpleCorrection{T} <: AbstractCorrection
     scaling::T
     function SimpleCorrection(scaling)
@@ -30,7 +30,7 @@ setup_correction(::NoCorrection, ::Dict) = NoCorrection()
 
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
-(corr::SimpleCorrection)(t, Δs, ηs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[:L, :L̃] + P[:R, :R̃])
+(corr::SimpleCorrection)(t, ρs, ηs, P, ham) = corr.scaling(t) * (P[:L, :L̃] + P[:R, :R̃]) #* √(ρs[1]^2 + ρs[2]^2 + ρs[3]^2)
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
 struct IndependentSimpleCorrection{T} <: AbstractCorrection
@@ -48,7 +48,7 @@ _process_constant_scaling(scaling::Number) = t -> scaling
 _process_constant_scaling(scaling) = scaling
 
 function (corr::IndependentSimpleCorrection)(t, Δs, ηs, P, ham)
-    Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
+    Δ = 1#√(ρs[1]^2 + ρs[2]^2 + ρs[3]^2)
     scaling = corr.scaling(t)
     scaling[1] * Δ * P[:L, :L̃] + scaling[2] * Δ * P[:R, :R̃]
 end
