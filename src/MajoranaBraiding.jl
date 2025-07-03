@@ -15,7 +15,7 @@ export parity_operators
 export majorana_exchange, gate_fidelity, analytical_gate_fidelity
 export SimpleCorrection, IndependentSimpleCorrection, InterpolatedExactSimpleCorrection, NoCorrection
 export single_braid_gate_kato, single_braid_gate_analytical_angle, single_braid_gate_analytical
-export setup_problem
+export setup_problem, solve
 export visualize_protocol, visualize_parities, visualize_analytic_parameters, visualize_spectrum, visualize_deltas
 export diagonal_majoranas, OptimizedSimpleCorrection, IndependentSimpleCorrection, OptimizedIndependentSimpleCorrection
 export measure_parities

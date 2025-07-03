@@ -5,7 +5,7 @@ using ProgressMeter
 using Base.Threads
 ##
 param_dict = Dict(
-    :ζ => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
+    :η => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
     :T => 1e4, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
@@ -17,7 +17,7 @@ param_dict = Dict(
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     # :γ => γ, #Majorana basis
     :initial => (:L, :L̃) => 1, #Initial state. Use I for the identity matrix.
-    :totalparity => -1 # The protocol works best for -1, as the gap closes for totalparity = 1 and ζ = 1
+    :totalparity => -1 # The protocol works best for -1, as the gap closes for totalparity = 1 and η = 1
 )
 
 ## Solve the system
@@ -39,9 +39,9 @@ zetas = range(1e-3, 1 - 1e-3, length=3 * gridpoints)
 single_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
 double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
 @time @showprogress for (idx_T, T) in enumerate(T_arr)
-    Threads.@threads for (idx_z, ζ) in collect(enumerate(zetas))
+    Threads.@threads for (idx_z, η) in collect(enumerate(zetas))
         local_dict = Dict(
-            :ζ => ζ,
+            :η => η,
             :T => T,
             :Δmax => 1 * [1 / 3, 1 / 2, 1],
             :Δmin => 1e-6 * [2, 1 / 3, 1],
@@ -65,12 +65,12 @@ double_braid_fidelity = zeros(Float64, 3gridpoints, gridpoints)
         double_braid_fidelity[idx_z, idx_T] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
     end
 end
-plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Single braid fidelity", clim=(0, 1)),
-    heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="ζ", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
+plot(heatmap(T_arr, zetas, single_braid_fidelity .^ 2, xlabel="T", ylabel="η", c=:viridis, title="Single braid fidelity", clim=(0, 1)),
+    heatmap(T_arr, zetas, double_braid_fidelity .^ 2, xlabel="T", ylabel="η", c=:viridis, title="Double braid fidelity", clim=(0, 1)))
 
 ## 1d sweep over zeta for the fidelity
 gridpoints = 40
-ζs = sqrt.(range(0, 1, gridpoints)) #range(0, 1, length=gridpoints)
+ηs = sqrt.(range(0, 1, gridpoints)) #range(0, 1, length=gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 double_braid_kato_fidelity = zeros(Float64, gridpoints)
 double_braid_analytical_gate_fidelity = zeros(Float64, gridpoints)
@@ -78,9 +78,9 @@ angles = zeros(Float64, gridpoints)
 analytical_fidelity = zeros(Float64, gridpoints)
 fidelities = zeros(Float64, gridpoints)
 fidelity_numerics_analytic = zeros(Float64, gridpoints)
-@time @showprogress @threads for (idx, ζ) in collect(enumerate(ζs))
+@time @showprogress @threads for (idx, η) in collect(enumerate(ηs))
     local_dict = Dict(
-        :ζ => ζ .* (1, 1, 1),
+        :η => η .* (1, 1, 1),
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 0 * 1e-10 * [2, 1 / 3, 1],
@@ -110,21 +110,21 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
     analytical_fidelity[idx] = analytical_gate_fidelity(prob)
 end
 ##
-plot(ζs, double_braid_majorana_fidelity, lw=2, marker=true, ylims=(-0.01, 1.01), label="fidelity to majorana gate")
-plot!(ζs, analytical_fidelity, xlabel="ζ", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
-plot!(ζs, fidelity_numerics_analytic, lw=2, label="fidelity to analytical gate", marker=true)
+plot(ηs, double_braid_majorana_fidelity, lw=2, marker=true, ylims=(-0.01, 1.01), label="fidelity to majorana gate")
+plot!(ηs, analytical_fidelity, xlabel="η", ylabel="Fidelity", lw=2, frame=:box, label="analytical solution in the article")
+plot!(ηs, fidelity_numerics_analytic, lw=2, label="fidelity to analytical gate", marker=true)
 ##
-plot(; xlabel="ζ", lw=2, frame=:box)
-plot(ζs, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
-plot!(ζs, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
-plot!(ζs, analytical_fidelity, label="analytical majorana similarity", lw=2)
-plot!(ζs, double_braid_analytical_gate_fidelity, label="double_braid_analytical_gate_fidelity", lw=2)
+plot(; xlabel="η", lw=2, frame=:box)
+plot(ηs, double_braid_majorana_fidelity, label="double_braid_majorana_fidelity", lw=2)
+plot!(ηs, double_braid_kato_fidelity, label="double_braid_kato_fidelity", lw=2)
+plot!(ηs, analytical_fidelity, label="analytical majorana similarity", lw=2)
+plot!(ηs, double_braid_analytical_gate_fidelity, label="double_braid_analytical_gate_fidelity", lw=2)
 ## plot angles 
-plot(ζs, analytical_angles, label="analytical_angles", lw=2, frame=:box)
+plot(ηs, analytical_angles, label="analytical_angles", lw=2, frame=:box)
 ##
 ## Compare hamiltonian from M to the one from the diagonal_majoranas function at some time
 param_dict = Dict(
-    :ζ => 0.2, #Majorana overlaps. Number or triplet of numbers
+    :η => 0.2, #Majorana overlaps. Number or triplet of numbers
     :T => 5e3, #Maximum time
     :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
     :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
@@ -150,9 +150,9 @@ P = [I + 1im * prod(diagonal_majoranas(prob, t)[1:2])[subinds, subinds] for t in
 ## Do a sweep over zetas and plot the groundstate_components
 zetas = range(1e-6, 1, length=100)
 component_array = []
-for (idx, ζ) in collect(enumerate(zetas))
+for (idx, η) in collect(enumerate(zetas))
     local_dict = Dict(
-        :ζ => ζ,
+        :η => η,
         :T => 1e4,
         :Δmax => 1 * [1 / 3, 1 / 2, 1],
         :Δmin => 1e-10 * [2, 1 / 3, 1],
@@ -165,7 +165,7 @@ for (idx, ζ) in collect(enumerate(zetas))
         :totalparity => -1
     )
     prob = setup_problem(local_dict)
-    push!(component_array, MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(ζ, prob[:ramp], prob[:ts][end] / 4, 0.0, prob[:totalparity]), ζ^2, prob[:ramp], 1 * prob[:ts][end] / 4))
+    push!(component_array, MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(η, prob[:ramp], prob[:ts][end] / 4, 0.0, prob[:totalparity]), η, prob[:ramp], 1 * prob[:ts][end] / 4))
 end
 ## plot α/μ and ν/β as a log vs η
 ηs = zetas .^ 2
@@ -177,7 +177,7 @@ function guess(η)
     e = b - 1 / 2
     println(e)
     return cos(atan(η))
-    return (1 + b * η^2) / (1 + e * η^2)
+    return (1 + b * η) / (1 + e * η)
 end
 
 function eta_von_x(x)

@@ -1,3 +1,10 @@
+const MajoranaLabels = [:M, :M̃, :L, :L̃, :R, :R̃]
+function parity_operators(totalparity, mtype)
+    @majoranas γ
+    H = FermionicHilbertSpaces.majorana_hilbert_space(MajoranaLabels, ParityConservation(totalparity))
+    Dict((l1, l2) => mtype(matrix_representation(1im * γ[l1] * γ[l2], H)) for (l1, l2) in Base.product(MajoranaLabels, MajoranaLabels) if l1 != l2)
+end
+
 struct RampProtocol{Mi,Ma,T,F}
     delta_mins::Mi
     delta_maxes::Ma
@@ -29,7 +36,7 @@ end
 (ramp::RampProtocol)(t) = get_deltas(ramp, t)
 
 function setup_problem(dict)
-    @unpack ζ, Δmin, Δmax, T, k, steps, correction, totalparity = dict
+    @unpack η, Δmin, Δmax, T, k, steps, correction, totalparity = dict
     N = 3
     d = 2^(N - 1)
     _u0 = dict[:initial]
@@ -41,7 +48,7 @@ function setup_problem(dict)
     ts = range(0, tspan[2], steps)
     newdict = Dict(dict..., :ramp => ramp, :ts => ts, :tspan => tspan, :P => P)
     corr = setup_correction(correction, newdict)
-    p = (ramp, ζ, corr, P)
+    p = (ramp, η, corr, P)
     interpolate = get(dict, :interpolate_corrected_hamiltonian, false)
     H(p, t) = ham_with_corrections(p, t)
     op = interpolate ? get_iH_interpolation_op(ham_with_corrections, p, ts) : get_op(ham_with_corrections, p)
@@ -59,11 +66,4 @@ function process_initial_state(u0::Pair{<:Tuple,Int}, P, (mtype, vtype))
 end
 function process_initial_state(::UniformScaling, P, (mtype, vtype))
     mtype(I)
-end
-
-const MajoranaLabels = [:M, :M̃, :L, :L̃, :R, :R̃]
-function parity_operators(totalparity, mtype)
-    @majoranas γ
-    H = FermionicHilbertSpaces.majorana_hilbert_space(MajoranaLabels, ParityConservation(totalparity))
-    Dict((l1, l2) => mtype(matrix_representation(1im * γ[l1] * γ[l2], H)) for (l1, l2) in Base.product(MajoranaLabels, MajoranaLabels) if l1 != l2)
 end

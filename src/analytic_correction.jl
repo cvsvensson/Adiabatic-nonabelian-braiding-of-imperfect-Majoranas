@@ -1,61 +1,50 @@
 struct InterpolatedExactSimpleCorrection <: AbstractCorrection end
 
 function setup_correction(::InterpolatedExactSimpleCorrection, d::Dict)
-    ζ = d[:ζ]
+    η = d[:η]
     ramp = d[:ramp]
     ts = d[:ts]
-    return analytical_exact_simple_correction(ζ, ramp, ts, d[:totalparity])
+    return analytical_exact_simple_correction(η, ramp, ts, d[:totalparity])
 end
-function analytical_exact_simple_correction(ζ, ramp, ts, totalparity; opt_kwargs...)
+function analytical_exact_simple_correction(η, ramp, ts, totalparity; opt_kwargs...)
     results = Float64[]
     for t in ts
         # Find roots of the energy split function
         initial = 0.0#length(results) > 0 ? results[end] : 0.0
-        result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
+        result = find_zero_energy_from_analytics(η, ramp, t, initial, totalparity; opt_kwargs...)
         push!(results, result)
     end
     return SimpleCorrection(linear_interpolation(ts, results, extrapolation_bc=Periodic()))
 end
 
-find_zero_energy_from_analytics(ζ::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_ζ_by_η(ζ), ramp, t, initial, totalparity; kwargs...)
-function find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
+find_zero_energy_from_analytics(η::Tuple, ramp, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_η(η), ramp, t, initial, totalparity; kwargs...)
+function find_zero_energy_from_analytics(η, ramp, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
     λ = try
-        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε + totalparity * λ, initial; atol, rtol, kwargs...)
+        find_zero(λ -> analytic_parameters(λ, η, ramp, t).ε + totalparity * λ, initial; atol, rtol, kwargs...)
     catch
-        find_zero(λ -> analytic_parameters(λ, ζ, ramp, t).ε + totalparity * λ, initial; atol, rtol, verbose=true, kwargs...)
+        find_zero(λ -> analytic_parameters(λ, η, ramp, t).ε + totalparity * λ, initial; atol, rtol, verbose=true, kwargs...)
     end
     return λ
 end
 
 
-function analytic_energy_spectrum(λ, ζ, ramp, t, totalparity)
-    (; Δ, ε, Δtilde) = analytic_parameters(λ, ζ, ramp, t)
+function analytic_energy_spectrum(λ, η, ramp, t, totalparity)
+    (; Δ, ε, Δtilde) = analytic_parameters(λ, η, ramp, t)
     es = [0, ε + λ, ε + Δtilde, Δtilde + λ] .- (totalparity == -1) * ε
     2Δ * sort(es .- sum(es) / 4)
 end
 
-# effective_ζ(ζ::Tuple) = (ζ[2] + ζ[3]) / 2 # bad because ζ[1] also effects the result
-# effective_ζ(ζ::Tuple) = (ζ[1] +ζ[2] +ζ[3])/3 #very bad
-# effective_ζ(ζ::Tuple) = (ζ[1]ζ[2]ζ[3])^(1/3) #not good
-# effective_ζ(ζ::Tuple) = (ζ[1] + sqrt(ζ[2]ζ[3])) / 2 # meh
-# effective_ζ(ζ::Tuple) = sqrt(ζ[1] * (ζ[2] + ζ[3]) / 2)  #nice
-# effective_ζ(ζ::Tuple) = (sqrt(ζ[1] * ζ[2]) + sqrt(ζ[1] * ζ[3])) / 2 #best so far
-function effective_ζ_by_η(ζ::Tuple)
-    ηs = map(x -> x^2, ζ)
-    # return (sqrt(ηs[1]) * (sqrt(ηs[2]) + sqrt(ηs[3])) / 2) |> sqrt
-    # return (sqrt(ηs[1]) * sqrt((ηs[2] + ηs[3]) / 2)) |> sqrt
-    # return (sqrt(ηs[1]) * (ηs[2] * ηs[3])^(1 / 4)) |> sqrt
-    return sqrt(ηs[1] * sqrt(ηs[2] * ηs[3])) |> sqrt # awesome
+function effective_η(ηs::Tuple)
+    return sqrt(ηs[1] * sqrt(ηs[2] * ηs[3])) #|> sqrt # awesome
 end
 
-analytic_parameters(λ, ζ::Tuple, ramp, t) = analytic_parameters(λ, effective_ζ_by_η(ζ), ramp, t)
-function analytic_parameters(λ, ζ, ramp, t)
-    Δs = ramp(t) ./ (1, (1 + ζ^2), (1 + ζ^2)) # divide to normalize the hamiltonian
+analytic_parameters(λ, η::Tuple, ramp, t) = analytic_parameters(λ, effective_η(η), ramp, t)
+function analytic_parameters(λ, η, ramp, t)
+    Δs = ramp(t) ./ (1, (1 + η), (1 + η)) # divide to normalize the hamiltonian
     Δ = sqrt(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
     Δ23 = √(Δs[2]^2 + Δs[3]^2)
     θ = atan(Δ23, Δs[1])
     ϕ = atan(Δs[3], Δs[2])
-    η = ζ^2
     λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
     ηtilde = η * sin(θ)^2 - λ * cos(θ)
     θ_μ = -1 / 2 * atan(2 * λtilde * ηtilde, 1 + λtilde^2 - ηtilde^2)
@@ -70,9 +59,8 @@ function analytic_parameters(λ, ζ, ramp, t)
     return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, ϕ, η, λ)
 end
 
-# analytic_parameters_midpoint(ζ::Tuple, totalparity) = analytic_parameters_midpoint(effective_ζ_by_η(ζ), totalparity)
-# function analytic_parameters_midpoint(ζ, totalparity)
-#     η = ζ^2
+# analytic_parameters_midpoint(η::Tuple, totalparity) = analytic_parameters_midpoint(effective_η_by_η(η), totalparity)
+# function analytic_parameters_midpoint(η, totalparity)
 #     λ = -totalparity * η / sqrt(1 + η^2)
 #     # α = cos(atan(-η * tan(θ) + λ))
 #     # α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
@@ -85,10 +73,9 @@ end
 #     (; ν, α, η, λ)
 # end
 
-analytical_components_middle_of_protocol(d::Dict) = analytical_components_middle_of_protocol(d[:ζ], d[:totalparity])
-analytical_components_middle_of_protocol(ζ::Tuple, totalparity) = analytical_components_middle_of_protocol(effective_ζ_by_η(ζ), totalparity)
-function analytical_components_middle_of_protocol(ζ, totalparity)
-    η = ζ^2
+analytical_components_middle_of_protocol(d::Dict) = analytical_components_middle_of_protocol(d[:η], d[:totalparity])
+analytical_components_middle_of_protocol(η::Tuple, totalparity) = analytical_components_middle_of_protocol(effective_η(η), totalparity)
+function analytical_components_middle_of_protocol(η, totalparity)
     λ = -totalparity * η / sqrt(1 + η^2)
     θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
     ν, μ = sincos(θ_μ)
@@ -110,15 +97,15 @@ end
     corr = SimpleCorrection(λ)
     totalparity = -1
     P = parity_operators(totalparity, mtype)
-    ζ = 0.5
-    p = (ramp, (0, 0, 0), ζ, corr, P)
+    η = 0.5
+    p = (ramp, (0, 0, 0), η, corr, P)
 
     spectrum = stack(map(t -> eigvals(-totalparity * ham_with_corrections(p, t)), ts))' # Why the totalparity here?
-    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, ζ, ramp, t, totalparity), ts))'
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, η, ramp, t, totalparity), ts))'
     @test spectrum ≈ analytic_spectrum
 
     param_dict = Dict(
-        :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
+        :η => 0.7, #Majorana overlaps. Number or triplet of numbers
         :T => 1e4, #Maximum time
         :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
         :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers
@@ -134,13 +121,13 @@ end
     ts = range(0, 2prob[:T], 10)
     λ = 0
     spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t)), ts))'
-    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:ζ], prob[:ramp], t, prob[:totalparity]), ts))'
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:η], prob[:ramp], t, prob[:totalparity]), ts))'
     @test norm(spectrum - analytic_spectrum) < 1e-10
 
     param_dict[:totalparity] = -1
     prob = setup_problem(param_dict)
     spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t)), ts))'
-    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:ζ], prob[:ramp], t, prob[:totalparity]), ts))'
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:η], prob[:ramp], t, prob[:totalparity]), ts))'
     @test spectrum ≈ analytic_spectrum
 
 
@@ -152,7 +139,7 @@ end
     plot!(energy_gaps_analytic)
 
     param_dict = Dict(
-        :ζ => 0.7, #Majorana overlaps. Number or triplet of numbers
+        :η => 0.7, #Majorana overlaps. Number or triplet of numbers
         :T => 1e4, #Maximum time
         :Δmax => 1 * (rand(3) .+ 0.5), #Largest values of Δs. Number or triplet of numbers
         :Δmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of Δs. Number or triplet of numbers

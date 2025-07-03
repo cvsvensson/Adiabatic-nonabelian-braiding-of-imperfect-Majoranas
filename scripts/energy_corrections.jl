@@ -26,16 +26,16 @@ u0 = vtype(collect(first(eachcol(eigen(Hermitian(P[:M, :M̃] + P[:L, :L̃] + P[:
 T = 2e3 / Δmax
 k = 1e1
 Δmin = 1e-6 * Δmax
-ζ = 7e-1
-ζs = (ζ, ζ, ζ) # Unwanted Majorana contributions within each island ordered as ζ01, ζ24, ζ35
+η = 7e-1
+ηs = (η, η, η) # Unwanted Majorana contributions within each island ordered as η01, η24, η35
 tspan = (0.0, 2T)
 ts = range(0, tspan[2], 1000)
 ramp = RampProtocol([2, 1, 1 / 2] .* Δmin, [2, 4, 1] .* Δmax, T, k)
 
 ## 
-simplecorr = optimized_simple_correction(H, (ramp, ζs, P), ts)
-independentsimplecorr = optimized_independent_simple_correction(H, (ramp, ζs, P), ts)
-analyticsimplecorr = analytical_exact_simple_correction(ζ, ramp, ts)
+simplecorr = optimized_simple_correction(H, (ramp, ηs, P), ts)
+independentsimplecorr = optimized_independent_simple_correction(H, (ramp, ηs, P), ts)
+analyticsimplecorr = analytical_exact_simple_correction(η, ramp, ts)
 remove_labels = [[0, 1], [0, 2], [0, 3]]
 constrained_basis = MajoranaBraiding.remove_from_basis(remove_labels, P)
 
@@ -43,8 +43,8 @@ corrections = [simplecorr, independentsimplecorr, analyticsimplecorr]
 ##
 
 for (n, corr) in enumerate(corrections)
-    p = (ramp, ζs, corr, P)
-    pl = visualize_protocol(H, ramp, ζs, corr, P, ts)
+    p = (ramp, ηs, corr, P)
+    pl = visualize_protocol(H, ramp, ηs, corr, P, ts)
     annotate!([(:left, :top, "Correction: $n")])
     display(pl)
     # deltas = stack([ramp(t) for t in ts])'

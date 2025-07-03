@@ -9,13 +9,13 @@ end
 gate_fidelity(g1, g2) = abs(dot(g1, g2)^2 / (dot(g1, g1) * dot(g2, g2)))
 gate_fidelity(g1, g2, proj) = abs(dot(g1, proj * g2 * proj)^2 / (dot(g1, proj * g1 * proj) * dot(g2, proj * g2 * proj)))
 
-single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:ζ], d[:totalparity])
-function single_braid_gate_kato(P, ζ, totalparity)
-    foldr(*, analytical_gates(P, ζ, totalparity))
+single_braid_gate_kato(d::Dict) = single_braid_gate_kato(d[:P], d[:η], d[:totalparity])
+function single_braid_gate_kato(P, η, totalparity)
+    foldr(*, analytical_gates(P, η, totalparity))
 end
 
-function analytical_gates(P, ζ, totalparity)
-    (; μ, α, β, ν, θ_α, θ_μ) = analytical_components_middle_of_protocol(ζ, totalparity)
+function analytical_gates(P, η, totalparity)
+    (; μ, α, β, ν, θ_α, θ_μ) = analytical_components_middle_of_protocol(η, totalparity)
     ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
@@ -25,42 +25,42 @@ function analytical_gates(P, ζ, totalparity)
 
 end
 
-zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:ζ], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
-function zero_energy_analytic_parameters(ζ::Tuple, ramp, t, totalparity; kwargs...)
-    zero_energy_analytic_parameters(effective_ζ_by_η(ζ), ramp, t, totalparity; kwargs...)
+zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:η], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function zero_energy_analytic_parameters(η::Tuple, ramp, t, totalparity; kwargs...)
+    zero_energy_analytic_parameters(effective_η(η), ramp, t, totalparity; kwargs...)
 end
-function zero_energy_analytic_parameters(ζ, ramp, t, totalparity; opt_kwargs...)
+function zero_energy_analytic_parameters(η, ramp, t, totalparity; opt_kwargs...)
     initial = 0.0
-    result = find_zero_energy_from_analytics(ζ, ramp, t, initial, totalparity; opt_kwargs...)
-    return analytic_parameters(result, ζ, ramp, t)
+    result = find_zero_energy_from_analytics(η, ramp, t, initial, totalparity; opt_kwargs...)
+    return analytic_parameters(result, η, ramp, t)
 end
 
-analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:ζ], d[:totalparity])
-function analytical_gate_fidelity(ζ, totalparity)
-    (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
+analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:η], d[:totalparity])
+function analytical_gate_fidelity(η, totalparity)
+    (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
     return cos(π / 2 * (1 - abs(α) + abs(ν)))^2
 end
-single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:ζ], d[:totalparity])
-function single_braid_gate_analytical_angle(ζ, totalparity)
-    (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
+single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:η], d[:totalparity])
+function single_braid_gate_analytical_angle(η, totalparity)
+    (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
     return π / 4 * (abs(α) - abs(ν))
 end
-single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:ζ], d[:totalparity])
-function single_braid_gate_analytical(P, ζ, totalparity)
-    (; α, ν) = analytical_components_middle_of_protocol(ζ, totalparity)
+single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:η], d[:totalparity])
+function single_braid_gate_analytical(P, η, totalparity)
+    (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
     return exp(-totalparity * π / 4 * (abs(α) - abs(ν)) * 1im * P[:L, :R])
 end
 
 
-diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:ζ], λ)
-diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:ramp], t, d[:ζ], d[:totalparity])
+diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:η], λ)
+diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:ramp], t, d[:η], d[:totalparity])
 
-function diagonal_majoranas_at_zero_energy(γ, ramp, t, ζ, totalparity)
-    λ = find_zero_energy_from_analytics(ζ, ramp, t, 0.0, totalparity)
-    diagonal_majoranas(γ, ramp, t, ζ, λ)
+function diagonal_majoranas_at_zero_energy(γ, ramp, t, η, totalparity)
+    λ = find_zero_energy_from_analytics(η, ramp, t, 0.0, totalparity)
+    diagonal_majoranas(γ, ramp, t, η, λ)
 end
-function diagonal_majoranas(γ, ramp, t, ζ, λ)
-    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, ζ, ramp, t)
+function diagonal_majoranas(γ, ramp, t, η, λ)
+    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, η, ramp, t)
     sθ, cθ = sincos(θ)
     sϕ, cϕ = sincos(ϕ)
 
@@ -81,20 +81,21 @@ end
 
 @testitem "Diagonal majoranas" begin
     using LinearAlgebra
-    γ = get_majorana_basis()
+    using FermionicHilbertSpaces
+    γ = majoranas(FermionicHilbertSpaces.majorana_hilbert_space(MajoranaBraiding.MajoranaLabels, ParityConservation()))
     T = 1e4
     ramp = RampProtocol(0, 1e6, T, 1e1)
-    ζ = 0.5
+    η = 0.5
     ts = range(0, 2T, 100)
-    parity_operator = 1im * prod(γ)
+    parity_operator = 1im * prod(values(γ))
     λ = 0
-    γdiag = diagonal_majoranas(γ, ramp, T / 3, ζ, λ)
+    γdiag = diagonal_majoranas(γ, ramp, T / 3, η, λ)
     parity_operator_diag = 1im * prod(γdiag)
-    @test parity_operator ≈ parity_operator_diag
+    @test parity_operator ≈ -parity_operator_diag
 
     @test all(norm(y^2 - I) < 1e-10 for y in γdiag)
     ## test CAR 
-    for (y1, y2) in Base.product(γ, γ)
+    for (y1, y2) in Base.product(values(γ), values(γ))
         @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
     end
     for (y1, y2) in Base.product(γdiag, γdiag)
@@ -103,13 +104,13 @@ end
 
     #Non-zero lambda
     λ = 0.3
-    γdiag = diagonal_majoranas(γ, ramp, T / 3, ζ, λ)
+    γdiag = diagonal_majoranas(γ, ramp, T / 3, η, λ)
     parity_operator_diag = 1im * prod(γdiag)
-    @test parity_operator ≈ parity_operator_diag
+    @test parity_operator ≈ -parity_operator_diag
 
     @test all(norm(y^2 - I) < 1e-10 for y in γdiag)
     ## test CAR 
-    for (y1, y2) in Base.product(γ, γ)
+    for (y1, y2) in Base.product(values(γ), values(γ))
         @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
     end
     for (y1, y2) in Base.product(γdiag, γdiag)
