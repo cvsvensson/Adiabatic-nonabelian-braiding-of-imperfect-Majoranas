@@ -16,17 +16,12 @@ end
 RampProtocol(T, k::Number) = RampProtocol(T, smooth_step(k))
 smooth_step(k, x) = 1 / 2 + tanh(k * x) / 2
 smooth_step(k) = Base.Fix1(smooth_step, k)
-
-@inbounds function (ramp::RampProtocol)(t)
+function (ramp::RampProtocol)(t)
     T = ramp.total_time
     f = ramp.smooth_step
-    # shifts = (@SVector [0, T / 3, 2T / 3])
-    # fi(i) = f(cos(2pi * (t - shifts[i]) / T))
-    # ρs = ntuple(fi, Val(3))
     ρ1 = f(cos(2pi * (t - 0) / T))
     ρ2 = f(cos(2pi * (t - T / 3) / T))
     ρ3 = f(cos(2pi * (t - 2T / 3) / T))
-    # (cos(2pi * (t - shifts[i]) / T), cos(2pi * (t - shifts[i]) / T), cos(2pi * (t - shifts[i]) / T
     return (ρ1, ρ2, ρ3) ./ sqrt(ρ1^2 + ρ2^2 + ρ3^2) # normalize
 end
 
