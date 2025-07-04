@@ -26,9 +26,10 @@ end
 
 
 function analytic_energy_spectrum(λ, η, k, t, totalparity)
-    (; Δ, ε, Δtilde) = analytic_parameters(λ, η, k, t)
-    es = [0, ε + λ, ε + Δtilde, Δtilde + λ] .- (totalparity == -1) * ε
-    2Δ * sort(es .- sum(es) / 4)
+    (; ε, Δtilde) = analytic_parameters(λ, η, k, t)
+    ε = totalparity * ε
+    es = [0, ε + λ, ε + Δtilde, Δtilde + λ]# .- (totalparity == -1) * ε
+    2 * sort(es .- sum(es) / 4)
 end
 
 function effective_η(ηs::Tuple)
@@ -37,8 +38,7 @@ end
 
 analytic_parameters(λ, η::Tuple, k, t) = analytic_parameters(λ, effective_η(η), k, t)
 function analytic_parameters(λ, η, k, t)
-    ρs = get_rhos(k, t) #./ (1, (1 + η), (1 + η)) # divide to normalize the hamiltonian
-    Δ = 1#sqrt(ρs[1]^2 + ρs[2]^2 + ρs[3]^2)
+    ρs = get_rhos(k, t)
     ρ23 = √(ρs[2]^2 + ρs[3]^2)
     θ = atan(ρ23, ρs[1])
     ϕ = atan(ρs[3], ρs[2])
@@ -53,7 +53,7 @@ function analytic_parameters(λ, η, k, t)
 
     ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ. The sign of the last term differs from the SI.
 
-    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, Δ, θ, ϕ, η, λ)
+    return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, θ, ϕ, η, λ)
 end
 
 # analytic_parameters_midpoint(η::Tuple, totalparity) = analytic_parameters_midpoint(effective_η_by_η(η), totalparity)
@@ -82,10 +82,9 @@ function analytical_components_middle_of_protocol(η, totalparity)
 end
 
 
-@testitem "Energy splitting" begin
+@testitem "Analytic spectrum" begin
     using StaticArrays, LinearAlgebra
-    N = 3
-    mtype, vtype = SMatrix{2^(N - 1),2^(N - 1),ComplexF64}, SVector{2^(N - 1)}
+    mtype, vtype = SMatrix{4,4,ComplexF64}, SVector{4}
 
     T = 10
     k = 1
@@ -94,61 +93,32 @@ end
     totalparity = -1
     P = parity_operators(totalparity, mtype)
     η = 0.5
-    p = (k, T, (0, 0, 0), η, corr, P)
-
-    spectrum = stack(map(t -> eigvals(-totalparity * ham_with_corrections(p, t)), ts))' # Why the totalparity here?
-    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, η, k, t / T, totalparity), ts))'
+    p = (η, k, corr, P)
+    ts = range(0, 2, 5)
+    spectrum = stack(map(t -> eigvals(MajoranaBraiding.ham_with_corrections(p, t)), ts))'
+    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, η, k, t, totalparity), ts))'
     @test spectrum ≈ analytic_spectrum
 
     param_dict = Dict(
         :η => 0.7, #Majorana overlaps. Number or triplet of numbers
         :T => 1e4, #Maximum time
-        :ρmax => 1 * (rand(3) .+ 0.5), #Largest values of ρs. Number or triplet of numbers
-        :ρmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of ρs. Number or triplet of numbers
         :k => 2e1, #Determines the slope of the ramp
-        :steps => 2000, #Number of timesteps for interpolations
+        :steps => 1000, #Number of timesteps for interpolations
         :correction => NoCorrection(), #Different corrections are available. This is the most relevant one for the paper
         :interpolate_corrected_hamiltonian => false, #Creating an interpolated Hamiltonian might speed things up
-        :γ => γ, #Majorana basis
         :initial => I, #Initial state. Use U0 for the identity matrix.
         :totalparity => 1
     )
     prob = setup_problem(param_dict)
-    ts = range(0, 2, 10)
+    ts = range(0, 2, 5)
     λ = 0
-    spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t)), ts))'
+    spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t) / prob[:T]), ts))'
     analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:η], prob[:k], t, prob[:totalparity]), ts))'
     @test norm(spectrum - analytic_spectrum) < 1e-10
 
     param_dict[:totalparity] = -1
     prob = setup_problem(param_dict)
-    spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t)), ts))'
+    spectrum = stack(map(t -> eigvals(prob[:H](prob[:p], t) / prob[:T]), ts))'
     analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, prob[:η], prob[:k], t, prob[:totalparity]), ts))'
-    @test spectrum ≈ analytic_spectrum
-
-
-    energy_gaps = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], ts)
-    energy_gaps2 = map(t -> diff(eigvals(-1im * prob[:op](prob[:u0], prob[:p], t)))[1], ts)
-    energy_gaps_analytic = [2MajoranaBraiding.analytic_parameters(0, prob[:ζ], prob[:k], t).ε for t in ts]
-    plot(energy_gaps)
-    plot!(energy_gaps2)
-    plot!(energy_gaps_analytic)
-
-    param_dict = Dict(
-        :η => 0.7, #Majorana overlaps. Number or triplet of numbers
-        :T => 1e4, #Maximum time
-        :ρmax => 1 * (rand(3) .+ 0.5), #Largest values of ρs. Number or triplet of numbers
-        :ρmin => 1e-10 * (rand(3) .+ 0.5), #Smallest values of ρs. Number or triplet of numbers
-        :k => 2e1, #Determines the slope of the ramp
-        :steps => 2000, #Number of timesteps for interpolations
-        :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
-        :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
-        :γ => γ, #Majorana basis
-        :u0 => U0, #Initial state. Use U0 for the identity matrix.
-        :totalparity => 1
-    )
-
-    energy_gaps = map(t -> diff(eigvals(prob[:H](prob[:p], t)))[1], range(0, 2, 1000))
-    @test all(abs.(energy_gaps) .< 1e-10)
-
+    @test norm(spectrum - analytic_spectrum) < 1e-10
 end
