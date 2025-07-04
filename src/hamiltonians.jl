@@ -1,148 +1,99 @@
 
 ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
 
-_ham_with_corrections(ramp, ϵs, ζ::Number, correction, P, t, α=1) = _ham_with_corrections(ramp, ϵs, (ζ, ζ, ζ), correction, P, t, α)
-function _ham_with_corrections(ramp, ϵs, ζs, correction, P, t, α=1)
-    Δs = ramp(t) ./ (1, sqrt(1 + (ζs[1]ζs[2])^2), sqrt(1 + (ζs[1]ζs[3])^2)) # divide to normalize the hamiltonian
-    Ham = (Δs[1] * P[:M, :M̃] + Δs[2] * P[:M, :L] + Δs[3] * P[:M, :R] +
-           ϵs[1] * P[:M, :M̃] + ϵs[2] * P[:L, :L̃] + ϵs[3] * P[:R, :R̃] +
-           _error_ham(Δs, ζs, P))
-    Ham += correction(t, Δs, ζs, P, Ham)
+_ham_with_corrections(η::Number, k, correction, P, t, α=1) = _ham_with_corrections((η, η, η), k, correction, P, t, α)
+function _ham_with_corrections(ηs, k, correction, P, t, α=1)
+    ρs = get_rhos(k, t) #./ (1, sqrt(1 + ηs[1]) * sqrt(1 + ηs[2]), sqrt(1 + ηs[1]) * sqrt(1 + ηs[3])) # divide to normalize the hamiltonian
+    Ham = (ρs[1] * P[:M, :M̃] +
+           ρs[2] * P[:M, :L] +
+           ρs[3] * P[:M, :R] +
+           # errors
+           ρs[2] * sqrt(ηs[1] * ηs[2]) * P[:M̃, :L̃] +
+           ρs[3] * sqrt(ηs[1] * ηs[3]) * P[:M̃, :R̃])
+    Ham += correction(t, ρs, ηs, P, Ham)
     return Ham * α
-end
-_error_ham(Δs, ζ::Number, P) = _error_ham(Δs, (ζ, ζ, ζ), P)
-_error_ham(Δs, ζs, P) = +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
-_error_ham(ramp, t, ζ::Number, P) = _error_ham(ramp, t, (ζ, ζ, ζ), P)
-function _error_ham(ramp, t, ζs, P)
-    Δs = ramp(t)
-    +Δs[2] * ζs[1] * ζs[2] * P[:M̃, :L̃] + Δs[3] * ζs[1] * ζs[3] * P[:M̃, :R̃]
 end
 
 abstract type AbstractCorrection end
-(corr::AbstractCorrection)(t, Δs, ζs, P, ham) = error("(corr::C)(t, Δs, ζs, P, ham) not implemented for C=$(typeof(corr))")
+(corr::AbstractCorrection)(t, ρs, ηs, P, ham) = error("(corr::C)(t, ρs, ηs, P, ham) not implemented for C=$(typeof(corr))")
 struct NoCorrection <: AbstractCorrection end
-(corr::NoCorrection)(t, Δs, ζs, P, ham) = 0I
+(corr::NoCorrection)(t, ρs, ηs, P, ham) = 0I
 struct SimpleCorrection{T} <: AbstractCorrection
     scaling::T
-    function SimpleCorrection(scaling)
-        newscaling = _process_constant_scaling(scaling)
-        new{typeof(newscaling)}(newscaling)
-    end
 end
 setup_correction(::NoCorrection, ::Dict) = NoCorrection()
 
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
-# (corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 / (1 + (ζs[1]ζs[2])^2) + Δs[3]^2 / (1 + (ζs[1]ζs[3])^2)) * (P[:L, :L̃] + P[:R, :R̃]) #This gives the wrong result for some reason
-(corr::SimpleCorrection)(t, Δs, ζs, P, ham) = corr.scaling(t) * √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2) * (P[:L, :L̃] + P[:R, :R̃])
+(corr::SimpleCorrection)(t, ρs, ηs, P, ham) = corr.scaling(t) * (P[:L, :L̃] + P[:R, :R̃]) #* √(ρs[1]^2 + ρs[2]^2 + ρs[3]^2)
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
-struct IndependentSimpleCorrections{T} <: AbstractCorrection
+struct IndependentSimpleCorrection{T} <: AbstractCorrection
     scaling::T
 end
-function IndependentSimpleCorrections(scaling1, scaling2)
-    newscaling1 = _process_constant_scaling(scaling1)
-    newscaling2 = _process_constant_scaling(scaling2)
-    IndependentSimpleCorrections(t -> (newscaling1(t), newscaling2(t)))
+function IndependentSimpleCorrection(scaling1, scaling2)
+    IndependentSimpleCorrection(t -> (scaling1(t), scaling2(t)))
 end
-IndependentSimpleCorrections(scalings::Vector{<:Number}) = length(scalings) == 2 ? IndependentSimpleCorrections(scalings...) : error("scalings must be a vector of length 2")
-setup_correction(corr::IndependentSimpleCorrections, ::Dict) = corr
-
-_process_constant_scaling(scaling::Number) = t -> scaling
-_process_constant_scaling(scaling) = scaling
-
-function (corr::IndependentSimpleCorrections)(t, Δs, ζs, P, ham)
-    Δ = √(Δs[1]^2 + Δs[2]^2 + Δs[3]^2)
-    scaling = corr.scaling(t)
-    scaling[1] * Δ * P[:L, :L̃] + scaling[2] * Δ * P[:R, :R̃]
+function IndependentSimpleCorrection(scaling1::Number, scaling2::Number)
+    IndependentSimpleCorrection(t -> (scaling1, scaling2))
 end
-struct CorrectionSum
-    corrections::Vector{<:AbstractCorrection}
-end
-Base.:+(corr1::AbstractCorrection, corr2::AbstractCorrection) = CorrectionSum([corr1, corr2])
-Base.:+(corr::CorrectionSum, corr2::AbstractCorrection) = CorrectionSum([corr.corrections..., corr2])
-Base.:+(corr1::AbstractCorrection, corr::CorrectionSum) = CorrectionSum([corr1, corr.corrections...])
+IndependentSimpleCorrection(scalings::Vector{<:Number}) = length(scalings) == 2 ? IndependentSimpleCorrection(scalings...) : error("scalings must be a vector of length 2")
+setup_correction(corr::IndependentSimpleCorrection, ::Dict) = corr
 
-function (corr::CorrectionSum)(args...)
-    ham0 = args[end]
-    pre_args = args[1:end-1]
-    function f((old_corr, old_ham), _corr)
-        new_corr = _corr(pre_args..., old_ham)
-        (old_corr + new_corr, old_ham + new_corr)
-    end
-    foldl(f, corr.corrections, init=(0I, ham0))[1]
-end
-setup_correction(corr::CorrectionSum, d::Dict) = CorrectionSum(map(corr -> setup_correction(corr, d), corr.corrections))
-
-
-struct EigenEnergyCorrection{T} <: AbstractCorrection
-    scaling::T
-    function EigenEnergyCorrection(scaling)
-        newscaling = _process_constant_scaling(scaling)
-        new{typeof(newscaling)}(newscaling)
-    end
-end
-EigenEnergyCorrection() = EigenEnergyCorrection(t -> true)
-(corr::EigenEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * full_energy_correction_term(ham))
-setup_correction(corr::EigenEnergyCorrection, ::Dict) = corr
-
-function full_energy_correction_term(ham)
-    vals, vecs = eigen(Hermitian(ham))
-    δE = (vals[2] - vals[1]) / 2
-    δE * (vecs[:, 1] * vecs[:, 1]' - vecs[:, 2] * vecs[:, 2]')
+function (corr::IndependentSimpleCorrection)(t, Δs, ηs, P, ham)
+    s = corr.scaling(t)
+    s[1] * P[:L, :L̃] + s[2] * P[:R, :R̃]
 end
 
-struct WeakEnergyCorrection{B,T} <: AbstractCorrection
-    basis::B
-    scaling::T
-    function WeakEnergyCorrection(basis, scaling)
-        newscaling = _process_constant_scaling(scaling)
-        new{typeof(basis),typeof(newscaling)}(basis, newscaling)
-    end
+struct OptimizedSimpleCorrection <: AbstractCorrection end
+
+function setup_correction(::OptimizedSimpleCorrection, d::Dict)
+    return optimized_simple_correction(d[:η], d[:k], d[:P], d[:ts])
 end
-setup_correction(corr::WeakEnergyCorrection, ::Dict) = corr
-WeakEnergyCorrection(basis) = WeakEnergyCorrection(basis, t -> true)
-(corr::WeakEnergyCorrection)(t, Δs, ζs, P, ham) = iszero(corr.scaling(t)) ? zero(ham) : (corr.scaling(t) * weak_energy_correction_term(ham, corr.basis))
-
-function weak_energy_correction_term(ham, basis; alg=Majoranas.WM_BACKSLASH())
-    vals, vecs = eigen(Hermitian(ham))
-    δE = (vals[2] - vals[1]) / 2
-    # push the lowest energy states δE closer together
-    weak_ham_prob = WeakMajoranaProblem(basis, vecs, nothing, [nothing, nothing, nothing, δE])
-    sol = solve(weak_ham_prob, alg)
-    return Majoranas.coeffs_to_matrix(basis, sol)
-end
-
-
-function optimized_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
+function optimized_simple_correction(ηs, k, P, ts; alg=BFGS())
+    H = ham_with_corrections
     results = Float64[]
     function cost_function(x, t)
-        vals = eigvals(H((ramp, ϵs, ζs, SimpleCorrection(x), P), t))
+        vals = eigvals(H((ηs, k, SimpleCorrection(x), P), t))
         return vals[2] - vals[1]
     end
     for t in ts
         f(x) = cost_function(only(x), t)
-        initial = length(results) > 0 ? results[end] : 1.0
+        initial = length(results) > 0 ? results[end] : 0.0
         result = optimize(f, [initial], alg, Optim.Options(time_limit=1 / length(ts)))
+        # println("result = ", result)
         push!(results, only(result.minimizer))
     end
     return SimpleCorrection(linear_interpolation(ts, results))
 end
 
-function optimized_independent_simple_correction(H, (ramp, ϵs, ζs, P), ts; alg=BFGS())
+struct OptimizedIndependentSimpleCorrection <: AbstractCorrection
+    maxtime::Float64
+    penalty_factor::Float64
+end
+
+function setup_correction(corr::OptimizedIndependentSimpleCorrection, d::Dict)
+    return optimized_independent_simple_correction(d[:η], d[:k], d[:P], d[:ts]; penalty_factor=corr.penalty_factor, maxtime=corr.maxtime)
+end
+
+function optimized_independent_simple_correction(ηs, k, P, ts; penalty_factor, maxtime, alg=Fminbox(NelderMead()))
+    H = ham_with_corrections
     results = Vector{Float64}[]
-    # define a cost function that x as a vector instead of a scalar
     function cost_function(x::Vector, t)
-        vals = eigvals(H((ramp, ϵs, ζs, IndependentSimpleCorrections(x), P), t))
+        ham = Hermitian(H((ηs, k, IndependentSimpleCorrection(x), P), t))
+        vals = eigvals(ham)
         return vals[2] - vals[1]
     end
-    abs_err = 1e-10
-    rel_err = 1e-10
+
+    lambda_limit = 100
+    middle = optimize(x -> cost_function(x, 1 / 2), lambda_limit .* [-1, -1], lambda_limit * [1, 1], [1.0, 1.0], alg, Optim.Options(time_limit=maxtime, f_abstol=1e-14, f_reltol=1e-14))
+    middle_result = iszero(middle.minimizer) ? [1, 1] / sqrt(2) : middle.minimizer / norm(middle.minimizer)
+    # println(middle_result)
+    # initial = [0.0]
     for t in ts
-        initial = length(results) > 0 ? results[end] : [0.0, 0.0]
-        result = optimize(x -> cost_function(x, t), initial, alg,
-            Optim.Options(time_limit=1 / length(ts)))#, Optim.Options(g_tol=abs_err, x_tol=rel_err))
-        push!(results, result.minimizer)
+        initial = length(results) > 0 ? norm(results[end]) : 0.0
+        result = optimize(x -> cost_function(x .* middle_result, t) + penalty_factor * abs2(initial - x), -lambda_limit, lambda_limit, Brent(); abs_tol=1e-14, rel_tol=1e-14, time_limit=maxtime / length(ts))
+        push!(results, only(result.minimizer) .* middle_result)
     end
-    return IndependentSimpleCorrections(linear_interpolation(ts, results))
+    return IndependentSimpleCorrection(linear_interpolation(ts, results))
 end
