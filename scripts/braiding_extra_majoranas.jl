@@ -5,8 +5,8 @@ using ProgressMeter
 using Base.Threads
 ##
 param_dict = Dict(
-    :η => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
-    :T => 1e4, #Maximum time
+    :η => 0.01,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
+    :T => 1e3, #Maximum time
     :k => 1e1, #Determines the slope of the ramp
     :steps => 500, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
@@ -155,7 +155,7 @@ for (idx, η) in collect(enumerate(zetas))
         :totalparity => -1
     )
     prob = setup_problem(local_dict)
-    push!(component_array, MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(η, prob[:ramp], prob[:ts][end] / 4, 0.0, prob[:totalparity]), η, prob[:ramp], 1 * prob[:ts][end] / 4))
+    push!(component_array, MajoranaBraiding.analytic_parameters(find_zero_energy_from_analytics(η, prob[:k], prob[:ts][end] / 4, 0.0, prob[:totalparity]), η, prob[:k], 1 * prob[:ts][end] / 4))
 end
 ## plot α/μ and ν/β as a log vs η
 ηs = zetas .^ 2

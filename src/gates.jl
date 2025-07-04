@@ -25,14 +25,14 @@ function analytical_gates(P, η, totalparity)
 
 end
 
-zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:η], d[:ramp], d[:T], d[:totalparity]; get(d, :opt_kwargs, (;))...)
-function zero_energy_analytic_parameters(η::Tuple, ramp, t, totalparity; kwargs...)
-    zero_energy_analytic_parameters(effective_η(η), ramp, t, totalparity; kwargs...)
+zero_energy_analytic_parameters(d::Dict) = zero_energy_analytic_parameters(d[:η], d[:k], 1, d[:totalparity]; get(d, :opt_kwargs, (;))...)
+function zero_energy_analytic_parameters(η::Tuple, k, t, totalparity; kwargs...)
+    zero_energy_analytic_parameters(effective_η(η), k, t, totalparity; kwargs...)
 end
-function zero_energy_analytic_parameters(η, ramp, t, totalparity; opt_kwargs...)
+function zero_energy_analytic_parameters(η, k, t, totalparity; opt_kwargs...)
     initial = 0.0
-    result = find_zero_energy_from_analytics(η, ramp, t, initial, totalparity; opt_kwargs...)
-    return analytic_parameters(result, η, ramp, t)
+    result = find_zero_energy_from_analytics(η, k, t, initial, totalparity; opt_kwargs...)
+    return analytic_parameters(result, η, k, t)
 end
 
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:η], d[:totalparity])
@@ -52,15 +52,15 @@ function single_braid_gate_analytical(P, η, totalparity)
 end
 
 
-diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:γ], d[:ramp], t, d[:η], λ)
-diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:ramp], t, d[:η], d[:totalparity])
+diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:γ], d[:η], d[:k], t, λ)
+diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:η], d[:k], t, d[:totalparity])
 
-function diagonal_majoranas_at_zero_energy(γ, ramp, t, η, totalparity)
-    λ = find_zero_energy_from_analytics(η, ramp, t, 0.0, totalparity)
-    diagonal_majoranas(γ, ramp, t, η, λ)
+function diagonal_majoranas_at_zero_energy(γ, η, k, t, totalparity)
+    λ = find_zero_energy_from_analytics(η, k, t, 0.0, totalparity)
+    diagonal_majoranas(γ, k, t, η, λ)
 end
-function diagonal_majoranas(γ, ramp, t, η, λ)
-    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, η, ramp, t)
+function diagonal_majoranas(γ, k, t, η, λ)
+    (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, η, k, t)
     sθ, cθ = sincos(θ)
     sϕ, cϕ = sincos(ϕ)
 
@@ -84,12 +84,11 @@ end
     using FermionicHilbertSpaces
     γ = majoranas(FermionicHilbertSpaces.majorana_hilbert_space(MajoranaBraiding.MajoranaLabels, ParityConservation()))
     T = 1e4
-    ramp = RampProtocol(0, 1e6, T, 1e1)
     η = 0.5
-    ts = range(0, 2T, 100)
+    ts = range(0, 2, 100)#range(0, 2T, 100)
     parity_operator = 1im * prod(values(γ))
     λ = 0
-    γdiag = diagonal_majoranas(γ, ramp, T / 3, η, λ)
+    γdiag = diagonal_majoranas(γ, η, k, 1 / 3, λ)
     parity_operator_diag = 1im * prod(γdiag)
     @test parity_operator ≈ -parity_operator_diag
 
@@ -104,7 +103,7 @@ end
 
     #Non-zero lambda
     λ = 0.3
-    γdiag = diagonal_majoranas(γ, ramp, T / 3, η, λ)
+    γdiag = diagonal_majoranas(γ, η, k, 1 / 3, λ)
     parity_operator_diag = 1im * prod(γdiag)
     @test parity_operator ≈ -parity_operator_diag
 

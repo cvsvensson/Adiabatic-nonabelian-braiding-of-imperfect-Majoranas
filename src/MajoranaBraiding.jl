@@ -10,7 +10,6 @@ using OrdinaryDiffEqCore
 using OrdinaryDiffEqTsit5
 using FermionicHilbertSpaces
 
-export RampProtocol
 export parity_operators
 export majorana_exchange, gate_fidelity, analytical_gate_fidelity
 export SimpleCorrection, IndependentSimpleCorrection, InterpolatedExactSimpleCorrection, NoCorrection
