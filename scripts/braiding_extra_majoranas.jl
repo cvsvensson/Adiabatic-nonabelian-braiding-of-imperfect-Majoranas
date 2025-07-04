@@ -20,6 +20,8 @@ param_dict = Dict(
 
 ## Solve the system
 @time prob = setup_problem(param_dict);
+visualize_protocol(prob)
+##
 @time sol = solve(prob);
 stack([prob[:correction].scaling(t) for t in prob[:ts]]) |> plot
 ##
