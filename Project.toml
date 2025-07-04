@@ -20,6 +20,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
+FermionicHilbertSpaces = "0.4.2"
 LaTeXStrings = "1.4.0"
 PGFPlotsX = "1.6.2"
 
