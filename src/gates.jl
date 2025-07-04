@@ -85,6 +85,7 @@ end
     γ = majoranas(FermionicHilbertSpaces.majorana_hilbert_space(MajoranaBraiding.MajoranaLabels, ParityConservation()))
     T = 1e4
     η = 0.5
+    k = 1e1
     ts = range(0, 2, 100)#range(0, 2T, 100)
     parity_operator = 1im * prod(values(γ))
     λ = 0
