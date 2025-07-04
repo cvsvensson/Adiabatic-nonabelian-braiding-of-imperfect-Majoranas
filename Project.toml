@@ -1,7 +1,7 @@
 name = "MajoranaBraiding"
 uuid = "f83b5287-d29b-4393-86aa-12b1ba9ce9f2"
 authors = ["Viktor Svensson <svensson.viktor.91@gmail.com> and Maximilian Nitsch"]
-version = "preprint"
+version = "1.0.0"
 
 [deps]
 FermionicHilbertSpaces = "82e5dd95-83c3-46b2-a303-acc930c81756"
