@@ -52,9 +52,9 @@ diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:η
 
 function diagonal_majoranas_at_zero_energy(γ, η, k, t, totalparity)
     λ = find_zero_energy_from_analytics(η, k, t, 0.0, totalparity)
-    diagonal_majoranas(γ, k, t, η, λ)
+    diagonal_majoranas(γ, η, k, t, λ)
 end
-function diagonal_majoranas(γ, k, t, η, λ)
+function diagonal_majoranas(γ, η, k, t, λ)
     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, η, k, t)
     sθ, cθ = sincos(θ)
     sϕ, cϕ = sincos(ϕ)
@@ -81,7 +81,7 @@ end
     T = 1e4
     η = 0.5
     k = 1e1
-    ts = range(0, 2, 100)#range(0, 2T, 100)
+    ts = range(0, 2, 100)
     parity_operator = 1im * prod(values(γ))
     λ = 0
     γdiag = diagonal_majoranas(γ, η, k, 1 / 3, λ)
