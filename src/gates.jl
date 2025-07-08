@@ -38,17 +38,12 @@ end
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:η], d[:totalparity])
 function analytical_gate_fidelity(η, totalparity)
     (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
-    return cos(π / 2 * (1 - abs(α) + abs(ν)))^2
-end
-single_braid_gate_analytical_angle(d::Dict) = single_braid_gate_analytical_angle(d[:η], d[:totalparity])
-function single_braid_gate_analytical_angle(η, totalparity)
-    (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
-    return π / 4 * (abs(α) - abs(ν))
+    return cos(π / 2 * (-totalparity * α + ν - 1))^2
 end
 single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:η], d[:totalparity])
 function single_braid_gate_analytical(P, η, totalparity)
     (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
-    return exp(-totalparity * π / 4 * (abs(α) - abs(ν)) * 1im * P[:L, :R])
+    return exp(π / 4 * (-totalparity * α + ν) * 1im * P[:L, :R])
 end
 
 

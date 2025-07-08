@@ -9,6 +9,11 @@ function visualize_rhos(k, ts)
     ρs = stack([get_rhos(k, t) for t in ts])'
     plot(ts, ρs, label=["ρMM̃" "ρML" "ρMR"], ylabel="ρs", xlabel="t/T", ls=[:solid :dash :dot], lw=3, frame=:box)
 end
+visualize_deltas(d::Dict) = visualize_deltas(d[:k], d[:gapscaling], d[:ts])
+function visualize_deltas(k, gapscaling, ts)
+    ρs = stack([gapscaling(t) .* get_rhos(k, t) for t in ts])'
+    plot(ts, ρs, label=["ρMM̃" "ρML" "ρMR"], ylabel="ρs", xlabel="t/T", ls=[:solid :dash :dot], lw=3, frame=:box)
+end
 function visualize_protocol(dict::Dict)
     energyplot = visualize_spectrum(dict)
     deltaplot = visualize_rhos(dict)

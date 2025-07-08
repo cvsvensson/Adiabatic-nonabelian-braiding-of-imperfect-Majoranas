@@ -1,9 +1,9 @@
 
 ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
 
-_ham_with_corrections(η::Number, k, correction, P, t, α=1) = _ham_with_corrections((η, η, η), k, correction, P, t, α)
-function _ham_with_corrections(ηs, k, correction, P, t, α=1)
-    ρs = get_rhos(k, t) #./ (1, sqrt(1 + ηs[1]) * sqrt(1 + ηs[2]), sqrt(1 + ηs[1]) * sqrt(1 + ηs[3])) # divide to normalize the hamiltonian
+_ham_with_corrections(η::Number, k, gapscaling, correction, P, t, α=1) = _ham_with_corrections((η, η, η), k, gapscaling, correction, P, t, α)
+function _ham_with_corrections(ηs, k, gapscaling, correction, P, t, α=1)
+    ρs = get_rhos(k, t)
     Ham = (ρs[1] * P[:M, :M̃] +
            ρs[2] * P[:M, :L] +
            ρs[3] * P[:M, :R] +
@@ -11,7 +11,7 @@ function _ham_with_corrections(ηs, k, correction, P, t, α=1)
            ρs[2] * sqrt(ηs[1] * ηs[2]) * P[:M̃, :L̃] +
            ρs[3] * sqrt(ηs[1] * ηs[3]) * P[:M̃, :R̃])
     Ham += correction(t, ρs, ηs, P, Ham)
-    return Ham * α
+    return Ham * α * gapscaling(t)
 end
 
 abstract type AbstractCorrection end
@@ -25,7 +25,7 @@ setup_correction(::NoCorrection, ::Dict) = NoCorrection()
 
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
-(corr::SimpleCorrection)(t, ρs, ηs, P, ham) = corr.scaling(t) * (P[:L, :L̃] + P[:R, :R̃]) #* √(ρs[1]^2 + ρs[2]^2 + ρs[3]^2)
+(corr::SimpleCorrection)(t, ρs, ηs, P, ham) = corr.scaling(t) * (P[:L, :L̃] + P[:R, :R̃])
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
 struct IndependentSimpleCorrection{T} <: AbstractCorrection
@@ -54,14 +54,13 @@ function optimized_simple_correction(ηs, k, P, ts; alg=BFGS())
     H = ham_with_corrections
     results = Float64[]
     function cost_function(x, t)
-        vals = eigvals(H((ηs, k, SimpleCorrection(x), P), t))
+        vals = eigvals(H((ηs, k, t -> 1, SimpleCorrection(x), P), t))
         return vals[2] - vals[1]
     end
     for t in ts
         f(x) = cost_function(only(x), t)
         initial = length(results) > 0 ? results[end] : 0.0
-        result = optimize(f, [initial], alg, Optim.Options(time_limit=1 / length(ts)))
-        # println("result = ", result)
+        result = optimize(f, [initial], alg, Optim.Options(time_limit=10 / length(ts)))
         push!(results, only(result.minimizer))
     end
     return SimpleCorrection(linear_interpolation(ts, results))
@@ -80,7 +79,7 @@ function optimized_independent_simple_correction(ηs, k, P, ts; penalty_factor, 
     H = ham_with_corrections
     results = Vector{Float64}[]
     function cost_function(x::Vector, t)
-        ham = Hermitian(H((ηs, k, IndependentSimpleCorrection(x), P), t))
+        ham = Hermitian(H((ηs, k, t -> 1, IndependentSimpleCorrection(x), P), t))
         vals = eigvals(ham)
         return vals[2] - vals[1]
     end
@@ -88,8 +87,6 @@ function optimized_independent_simple_correction(ηs, k, P, ts; penalty_factor, 
     lambda_limit = 100
     middle = optimize(x -> cost_function(x, 1 / 2), lambda_limit .* [-1, -1], lambda_limit * [1, 1], [1.0, 1.0], alg, Optim.Options(time_limit=maxtime, f_abstol=1e-14, f_reltol=1e-14))
     middle_result = iszero(middle.minimizer) ? [1, 1] / sqrt(2) : middle.minimizer / norm(middle.minimizer)
-    # println(middle_result)
-    # initial = [0.0]
     for t in ts
         initial = length(results) > 0 ? norm(results[end]) : 0.0
         result = optimize(x -> cost_function(x .* middle_result, t) + penalty_factor * abs2(initial - x), -lambda_limit, lambda_limit, Brent(); abs_tol=1e-14, rel_tol=1e-14, time_limit=maxtime / length(ts))

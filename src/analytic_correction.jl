@@ -6,8 +6,7 @@ end
 function analytical_exact_simple_correction(η, k, ts, totalparity; opt_kwargs...)
     results = Float64[]
     for t in ts
-        # Find roots of the energy split function
-        initial = 0.0#length(results) > 0 ? results[end] : 0.0
+        initial = 0.0
         result = find_zero_energy_from_analytics(η, k, t, initial, totalparity; opt_kwargs...)
         push!(results, result)
     end
@@ -33,13 +32,13 @@ function analytic_energy_spectrum(λ, η, k, t, totalparity)
 end
 
 function effective_η(ηs::Tuple)
-    return sqrt(ηs[1] * sqrt(ηs[2] * ηs[3])) #|> sqrt # awesome
+    return sqrt(ηs[1] * sqrt(ηs[2] * ηs[3]))
 end
 
 analytic_parameters(λ, η::Tuple, k, t) = analytic_parameters(λ, effective_η(η), k, t)
 function analytic_parameters(λ, η, k, t)
     ρs = get_rhos(k, t)
-    ρ23 = √(ρs[2]^2 + ρs[3]^2)
+    ρ23 = sqrt(ρs[2]^2 + ρs[3]^2)
     θ = atan(ρ23, ρs[1])
     ϕ = atan(ρs[3], ρs[2])
     λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
@@ -51,34 +50,32 @@ function analytic_parameters(λ, η, k, t)
     β, α = sincos(θ_α)
     Δtilde = (α * μ + ηtilde * β * ν - λtilde * β * μ)
 
-    ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ. The sign of the last term differs from the SI.
+    ε = β * ν + λtilde * α * ν + ηtilde * α * μ # = ηtilde * α / μ. 
 
     return (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, Δtilde, ε, θ, ϕ, η, λ)
 end
-
-# analytic_parameters_midpoint(η::Tuple, totalparity) = analytic_parameters_midpoint(effective_η_by_η(η), totalparity)
-# function analytic_parameters_midpoint(η, totalparity)
-#     λ = -totalparity * η / sqrt(1 + η^2)
-#     # α = cos(atan(-η * tan(θ) + λ))
-#     # α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
-#     # θ = -1 / 2 * atan(2λ * η, 1 + λ^2 - η^2)
-#     # α = 1 / sqrt(1 + (λ - η * tan(θ))^2)
-#     # ν = sin(θ)
-#     ν = -sin(1 / 2 * atan(2 * λ * η, 1 + λ^2 - η^2))
-#     α = cos(atan(-η * ν / sqrt(1 - ν^2) + λ))
-#     θ_μ = asin(v)
-#     (; ν, α, η, λ)
-# end
 
 analytical_components_middle_of_protocol(d::Dict) = analytical_components_middle_of_protocol(d[:η], d[:totalparity])
 analytical_components_middle_of_protocol(η::Tuple, totalparity) = analytical_components_middle_of_protocol(effective_η(η), totalparity)
 function analytical_components_middle_of_protocol(η, totalparity)
     λ = -totalparity * η / sqrt(1 + η^2)
+    d = sqrt(1 + η^2 + η^4)
+    α = 1 / d
+    ν = totalparity * η^2 / d
+    μ = sqrt(1 + η^2) / d
+    β = totalparity * η * sqrt(1 + η^2) / d
+    θ_α = acos(α)
+    θ_μ = acos(μ)
+    return (; μ, α, β, ν, θ_α, θ_μ, λ, η)
+end
+
+function analytical_components_middle_of_protocol_old(η, totalparity)
+    λ = -totalparity * η / sqrt(1 + η^2)
     θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
     ν, μ = sincos(θ_μ)
     θ_α = -1 * atan(-η * tan(θ_μ) + λ)
     β, α = sincos(θ_α)
-    return (; μ, α, β, ν, θ_α, θ_μ, λ)
+    return (; μ, α, β, ν, θ_α, θ_μ, λ, η)
 end
 
 
@@ -93,7 +90,8 @@ end
     totalparity = -1
     P = parity_operators(totalparity, mtype)
     η = 0.5
-    p = (η, k, corr, P)
+    gapscaling = t -> 1
+    p = (η, k, gapscaling, corr, P)
     ts = range(0, 2, 5)
     spectrum = stack(map(t -> eigvals(MajoranaBraiding.ham_with_corrections(p, t)), ts))'
     analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, η, k, t, totalparity), ts))'

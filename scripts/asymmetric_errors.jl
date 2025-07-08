@@ -40,8 +40,8 @@ end
 
 ## Plot results
 effective_ηs = effective_η_scaling * ηs
-p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\tilde{\eta} = \sqrt{\eta_1\sqrt{\eta_2\eta_3}}", size=0.7 .* (600, 400), xlabelfontsize=15, legendfontsize=10, ylims=(-0.03, 1.03), legendposition=:bottomleft)
-plot!(p, effective_ηs, analytical_fidelity, lw=3, label=L"Analytic curve with $\tilde{\eta}$", c=colors[3])
+p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\eta_\mathrm{eff} = \sqrt{\eta_1\sqrt{\eta_2\eta_3}}", size=0.7 .* (600, 400), xlabelfontsize=15, legendfontsize=10, ylims=(-0.03, 1.03), legendposition=:bottomleft)
+plot!(p, effective_ηs, analytical_fidelity, lw=3, label=L"Analytic curve with $\eta_\mathrm{eff}$", c=colors[3])
 scatter!(p, effective_ηs, double_braid_majorana_fidelity, label="Asymmetric correction protocol", c=colors[1], marker=true)
 ##
 savefig(p, "majorana_similarity_asymmetric.pdf")

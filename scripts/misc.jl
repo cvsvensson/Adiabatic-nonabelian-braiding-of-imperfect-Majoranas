@@ -15,7 +15,8 @@ param_dict = Dict(
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     # :γ => γ, #Majorana basis
     :initial => (:L, :L̃) => 1, #Initial state. Use I for the identity matrix.
-    :totalparity => -1 # The protocol works best for -1, as the gap closes for totalparity = 1 and η = 1
+    :totalparity => -1, # The protocol works best for -1, as the gap closes for totalparity = 1 and η = 1
+    :gapscaling => t -> 1 .+ 0.5 * cos(2pi * t) # Gap scaling function
 )
 
 ## Solve the system
@@ -23,12 +24,13 @@ param_dict = Dict(
 visualize_protocol(prob)
 ##
 @time sol = solve(prob);
-stack([prob[:correction].scaling(t) for t in prob[:ts]]) |> plot
+plot(prob[:ts], stack([prob[:correction].scaling(t) for t in prob[:ts]]))
 ##
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t") # get a sense of the numerical error
 ##
 visualize_spectrum(prob)
 visualize_rhos(prob)
+visualize_deltas(prob)
 visualize_analytic_parameters(prob)
 visualize_protocol(prob)
 visualize_parities(sol, prob)
