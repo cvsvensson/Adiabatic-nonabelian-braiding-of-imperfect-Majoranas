@@ -16,7 +16,7 @@ double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 analytical_fidelity = zeros(Float64, gridpoints)
 asymmetry = (1, 0.5, 0.2)
 effective_η_scaling = MajoranaBraiding.effective_η(asymmetry)
-@time @showprogress @threads for (n, η) in collect(enumerate(ηs))
+@time @showprogress @threads :static for (n, η) in collect(enumerate(ηs))
     local_dict = Dict(
         :η => η .* asymmetry,
         :T => 2e3,

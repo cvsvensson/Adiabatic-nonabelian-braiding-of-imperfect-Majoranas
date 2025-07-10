@@ -36,8 +36,9 @@ function zero_energy_analytic_parameters(η, k, t, totalparity; opt_kwargs...)
 end
 
 analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:η], d[:totalparity])
+analytical_gate_fidelity(η::Tuple, totalparity) = analytical_gate_fidelity(effective_η(η), totalparity)
 function analytical_gate_fidelity(η, totalparity)
-    (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
+    # (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
     # return sin(π / 2 * (-totalparity * α + ν))^2
     return sin(π / 2 * (1 - η^2)^(3 / 2) / (1 - η^6)^(1 / 2))^2
 end
@@ -48,14 +49,15 @@ function single_braid_gate_analytical(P, η, totalparity)
 end
 
 
-diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:γ], d[:η], d[:k], t, λ)
-diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:γ], d[:η], d[:k], t, d[:totalparity])
+diagonal_majoranas(d::Dict, t, λ) = diagonal_majoranas(d[:η], d[:k], t, λ)
+diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:η], d[:k], t, d[:totalparity])
 
-function diagonal_majoranas_at_zero_energy(γ, η, k, t, totalparity)
+function diagonal_majoranas_at_zero_energy(η, k, t, totalparity)
     λ = find_zero_energy_from_analytics(η, k, t, 0.0, totalparity)
-    diagonal_majoranas(γ, η, k, t, λ)
+    diagonal_majoranas(η, k, t, λ)
 end
-function diagonal_majoranas(γ, η, k, t, λ)
+function diagonal_majoranas(η, k, t, λ)
+    γ = majoranas(majorana_hilbert_space(MajoranaLabels, ParityConservation()))
     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, η, k, t)
     sθ, cθ = sincos(θ)
     sϕ, cϕ = sincos(ϕ)
@@ -85,7 +87,7 @@ end
     ts = range(0, 2, 100)
     parity_operator = 1im * prod(values(γ))
     λ = 0
-    γdiag = diagonal_majoranas(γ, η, k, 1 / 3, λ)
+    γdiag = diagonal_majoranas(η, k, 1 / 3, λ)
     parity_operator_diag = 1im * prod(γdiag)
     @test parity_operator ≈ -parity_operator_diag
 
@@ -100,7 +102,7 @@ end
 
     #Non-zero lambda
     λ = 0.3
-    γdiag = diagonal_majoranas(γ, η, k, 1 / 3, λ)
+    γdiag = diagonal_majoranas(η, k, 1 / 3, λ)
     parity_operator_diag = 1im * prod(γdiag)
     @test parity_operator ≈ -parity_operator_diag
 
