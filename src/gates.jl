@@ -80,7 +80,7 @@ end
 @testitem "Diagonal majoranas" begin
     using LinearAlgebra
     using FermionicHilbertSpaces
-    γ = majoranas(FermionicHilbertSpaces.majorana_hilbert_space(MajoranaBraiding.MajoranaLabels, ParityConservation()))
+    γ = majoranas(majorana_hilbert_space(MajoranaBraiding.MajoranaLabels, ParityConservation()))
     T = 1e4
     η = 0.5
     k = 1e1

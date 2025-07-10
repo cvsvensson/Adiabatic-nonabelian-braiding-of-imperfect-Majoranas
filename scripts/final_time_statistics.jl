@@ -4,9 +4,11 @@ using Plots
 using ProgressMeter
 using Base.Threads
 using LaTeXStrings
+using Statistics
 ## Plot settings
 default(fontfamily="Computer Modern", linewidth=2, framestyle=:box, label=nothing, grid=false)
 colors = ["#FFC000", "#00B0F0", "#92D050"]
+
 ## Statistics over different final times. Takes about 15 minutes to run with 1000*500 gridpoints and realizations.
 gridpoints = 400
 realizations = 400
@@ -42,8 +44,8 @@ uncorrected_double_braid_majorana_fidelity_statistics = zeros(Float64, gridpoint
         end
     end
 end
-##
-using Statistics
+
+## Plots
 ribbonfunc = (m; dims) -> begin # this function uses std for the ribbon, but clamps it so that it does not go below 0
     me = dropdims(mapslices(mean, m; dims); dims)
     s = dropdims(mapslices(std, m; dims); dims)

@@ -41,7 +41,6 @@ end
 p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", size=0.6 .* (600, 350), xlabelfontsize=15, ylabelfontsize=10, legendfontsize=9, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]), legendposition=:topright, margin=0Plots.mm, tickfontsize=9)
 plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected", lw=2, c=colors[2])
 plot!(p, ηs, analytical_fidelity, lw=3, label="Corrected", c=colors[3])
-# annotate!(p, 1.05, -0.13, L"η")
 annotate!(p, 0.6, -0.1, L"$\eta$")
 ##
 savefig(p, "majorana_similarity.pdf")

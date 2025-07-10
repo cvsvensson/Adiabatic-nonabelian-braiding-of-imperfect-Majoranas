@@ -1,7 +1,7 @@
 const MajoranaLabels = [:M, :M̃, :L, :L̃, :R, :R̃]
 function parity_operators(totalparity, mtype)
     @majoranas γ
-    H = FermionicHilbertSpaces.majorana_hilbert_space(MajoranaLabels, ParityConservation(totalparity))
+    H = majorana_hilbert_space(MajoranaLabels, ParityConservation(totalparity))
     Dict((l1, l2) => mtype(matrix_representation(1im * γ[l1] * γ[l2], H)) for (l1, l2) in Base.product(MajoranaLabels, MajoranaLabels) if l1 != l2)
 end
 
