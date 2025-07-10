@@ -1,9 +1,8 @@
-# MajoranaBraiding
+# Adiabatic nonabelian braiding of imperfect Majoranas
 
-This repository contains the code used for the paper:
-**Adiabatic nonabelian braiding of imperfect Majoranas**
-by
-*Maximilian Nitsch, Viktor Svensson, William Samuelson, Konstantin Nestmann, Jeroen Danon, Karsten Flensberg, Rubén Seoane Souto and Martin Leijnse*.
+This repository contains the code used for the paper
+> **Adiabatic nonabelian braiding of imperfect Majoranas** \
+> *Maximilian Nitsch, Viktor Svensson, William Samuelson, Konstantin Nestmann, Jeroen Danon, Karsten Flensberg, Rubén Seoane Souto and Martin Leijnse*.
 
 Figure 3 in the paper can be reproduced by running `scripts/main_paper_figure.jl`.
 
