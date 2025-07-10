@@ -64,8 +64,8 @@ function analytical_components_middle_of_protocol(η, totalparity)
     ν = totalparity * η^2 / d
     μ = sqrt(1 + η^2) / d
     β = totalparity * η * sqrt(1 + η^2) / d
-    θ_α = acos(α)
-    θ_μ = acos(μ)
+    θ_α = atan(β, α)
+    θ_μ = atan(ν, μ)
     return (; μ, α, β, ν, θ_α, θ_μ, λ, η)
 end
 

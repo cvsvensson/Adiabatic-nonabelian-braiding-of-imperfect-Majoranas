@@ -138,3 +138,53 @@ projs = [eigen(Matrix(ham)).vectors[:, 1:2] for ham in hams]
 projs = [p * p' for p in projs]
 P = [I - 1im * prod(diagonal_majoranas(prob, t)[1:2])[subinds, subinds] for t in prob[:ts]] / 2
 [norm(p0 - p1) for (p0, p1) in zip(projs, P)] |> norm < 1e-12
+
+
+## Old SI figure
+gridpoints = 2000
+ηs = (range(0, 1, gridpoints))
+double_braid_majorana_fidelity_shorter_time = zeros(Float64, gridpoints)
+analytical_fidelity_shorter_time = zeros(Float64, gridpoints)
+uncorrected_double_braid_majorana_fidelity_shorter_time = zeros(Float64, gridpoints)
+@time @showprogress @threads for (n, η) in collect(enumerate(ηs))
+    local_dict = Dict(
+        :η => η,
+        :T => 60,
+        :k => 10,
+        :steps => 1000,
+        :correction => InterpolatedExactSimpleCorrection(),
+        # :correction => OptimizedSimpleCorrection(),
+        :interpolate_corrected_hamiltonian => true,
+        :initial => I,
+        :totalparity => -1
+    )
+    prob = setup_problem(local_dict)
+    sol = solve(prob; saveat=[2])
+    proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
+    majorana_double_braid = majorana_exchange(prob[:P][:L, :R])^2
+    double_braid_majorana_fidelity_shorter_time[n] = gate_fidelity(majorana_double_braid, sol(2), proj)
+    analytical_fidelity_shorter_time[n] = analytical_gate_fidelity(prob)
+
+    local_dict[:correction] = NoCorrection()
+    uncorrected_sol = solve(setup_problem(local_dict); saveat=[2])
+    uncorrected_double_braid_majorana_fidelity_shorter_time[n] = gate_fidelity(majorana_double_braid, uncorrected_sol(2), proj)
+end
+
+## Check that the corrected protocol agrees with the analytical fidelity
+ylabelfontsize = 9
+p_shorter_time = plot(; frame=:box, ylabel=L"MBS Similarity $S$", size=0.7 .* (600, 400), xlabelfontsize=15, ylabelfontsize, legendfontsize=8, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=false, legendposition=:topright)
+plot!(p_shorter_time, ηs, analytical_fidelity_shorter_time, lw=3, label="Corrected: adiabatic", c=colors[3])
+plot!(p_shorter_time, ηs, double_braid_majorana_fidelity_shorter_time, lw=3, label="Corrected: finite time", ls=:dash, c=colors[1])
+plot!(p_shorter_time, ηs, uncorrected_double_braid_majorana_fidelity_shorter_time, label="Uncorrected", lw=2, c=colors[2])
+annotate!(p_shorter_time, -0.12, 1, text(L"\mathrm{a)}", 12))
+#
+p_long_time = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\eta", size=0.7 .* (600, 400), xlabelfontsize=15, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]), legend=false, ylabelfontsize)
+plot!(p_long_time, ηs, analytical_fidelity, lw=3, label="Corrected: adiabatic", c=colors[3])
+plot!(p_long_time, ηs, double_braid_majorana_fidelity, lw=3, label="Corrected: finite time", ls=:dash, c=colors[1])
+plot!(p_long_time, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected", lw=2, c=colors[2], legend=false)
+annotate!(p_long_time, -0.12, 1, text(L"\mathrm{b)}", 12))
+#
+p2 = plot(p_shorter_time, p_long_time, layout=(2, 1), size=0.6 .* (600, 600), margin=0Plots.mm, bottom_margin=[-3Plots.mm -3Plots.mm])
+##
+# savefig(p2, "majorana_similarity_SI2.pdf")
+
