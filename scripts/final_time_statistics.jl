@@ -5,7 +5,6 @@ using ProgressMeter
 using Base.Threads
 using LaTeXStrings
 ## Plot settings
-gr()
 default(fontfamily="Computer Modern", linewidth=2, framestyle=:box, label=nothing, grid=false)
 colors = ["#FFC000", "#00B0F0", "#92D050"]
 ## Statistics over different final times. Takes about 15 minutes to run with 1000*500 gridpoints and realizations.
