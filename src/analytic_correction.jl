@@ -26,8 +26,7 @@ end
 
 function analytic_energy_spectrum(λ, η, k, t, totalparity)
     (; ε, Δtilde) = analytic_parameters(λ, η, k, t)
-    ε = totalparity * ε
-    es = [0, ε + λ, ε + Δtilde, Δtilde + λ]# .- (totalparity == -1) * ε
+    es = [0, -ε + λ, -ε + Δtilde, Δtilde + λ]
     2 * sort(es .- sum(es) / 4)
 end
 
@@ -87,16 +86,16 @@ end
     k = 1
     λ = 0.2
     corr = SimpleCorrection(λ)
-    totalparity = -1
-    P = parity_operators(totalparity, mtype)
     η = 0.5
     gapscaling = t -> 1
-    p = (η, k, gapscaling, corr, P)
     ts = range(0, 2, 5)
-    spectrum = stack(map(t -> eigvals(MajoranaBraiding.ham_with_corrections(p, t)), ts))'
-    analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, η, k, t, totalparity), ts))'
-    @test spectrum ≈ analytic_spectrum
-
+    for totalparity in (1, -1)
+        P = parity_operators(totalparity, mtype)
+        p = (η, k, gapscaling, corr, P, totalparity)
+        spectrum = stack(map(t -> eigvals(MajoranaBraiding.ham_with_corrections(p, t)), ts))'
+        analytic_spectrum = stack(map(t -> MajoranaBraiding.analytic_energy_spectrum(λ, η, k, t, totalparity), ts))'
+        @test spectrum ≈ analytic_spectrum
+    end
     param_dict = Dict(
         :η => 0.7, #Majorana overlaps. Number or triplet of numbers
         :T => 1e4, #Maximum time

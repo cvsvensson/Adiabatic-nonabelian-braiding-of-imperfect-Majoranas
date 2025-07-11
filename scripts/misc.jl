@@ -50,7 +50,7 @@ double_braid_fidelity = zeros(Float64, 2gridpoints, gridpoints)
             :steps => 200,
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => true,
-            :totalparity => 1,
+            :totalparity => -1,
             :initial => I,
         )
         prob = setup_problem(local_dict)
@@ -84,7 +84,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         :η => η .* (1, 1, 1),
         :T => 1e4,
         :k => 1e1,
-        :steps => 1000,
+        :steps => 500,
         :correction => InterpolatedExactSimpleCorrection(),
         # :correction => OptimizedSimpleCorrection(),
         # :correction => OptimizedIndependentSimpleCorrection(30, 1e-2),

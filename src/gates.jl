@@ -54,9 +54,9 @@ diagonal_majoranas(d::Dict, t) = diagonal_majoranas_at_zero_energy(d[:η], d[:k]
 
 function diagonal_majoranas_at_zero_energy(η, k, t, totalparity)
     λ = find_zero_energy_from_analytics(η, k, t, 0.0, totalparity)
-    diagonal_majoranas(η, k, t, λ)
+    diagonal_majoranas(η, k, t, λ, totalparity)
 end
-function diagonal_majoranas(η, k, t, λ)
+function diagonal_majoranas(η, k, t, λ, protocol_parity)
     γ = majoranas(majorana_hilbert_space(MajoranaLabels, ParityConservation()))
     (; ηtilde, λtilde, μ, α, β, ν, θ_α, θ_μ, θ, ϕ) = analytic_parameters(λ, η, k, t)
     sθ, cθ = sincos(θ)
@@ -66,8 +66,8 @@ function diagonal_majoranas(η, k, t, λ)
 
     γθprime = -sθ * γ[:M̃] + cθ * cϕ * γ[:L] + cθ * sϕ * γ[:R]
     γϕprime = -sϕ * γ[:L] + cϕ * γ[:R]
-    γη = cϕ * γ[:L̃] + sϕ * γ[:R̃]
-    γηprime = -sϕ * γ[:L̃] + cϕ * γ[:R̃]
+    γη = cϕ * γ[:L̃] - protocol_parity * sϕ * γ[:R̃]
+    γηprime = -sϕ * γ[:L̃] - protocol_parity * cϕ * γ[:R̃]
 
     γ1D = α * γ[:M] + β * γη
     γΔD = μ * γΔ + ν * γθprime
@@ -87,9 +87,11 @@ end
     ts = range(0, 2, 100)
     parity_operator = 1im * prod(values(γ))
     λ = 0
-    γdiag = diagonal_majoranas(η, k, 1 / 3, λ)
+    protocol_parity = 1
+    γdiag = diagonal_majoranas(η, k, 1 / 3, λ, protocol_parity)
     parity_operator_diag = 1im * prod(γdiag)
-    @test parity_operator ≈ -parity_operator_diag
+    @test parity_operator ≈ protocol_parity * parity_operator_diag
+    @test parity_operator ≈ -protocol_parity * 1im * prod(diagonal_majoranas(η, k, 1 / 3, λ, -protocol_parity))
 
     @test all(norm(y^2 - I) < 1e-10 for y in γdiag)
     ## test CAR 
@@ -102,9 +104,11 @@ end
 
     #Non-zero lambda
     λ = 0.3
-    γdiag = diagonal_majoranas(η, k, 1 / 3, λ)
+    γdiag = diagonal_majoranas(η, k, 1 / 3, λ, protocol_parity)
     parity_operator_diag = 1im * prod(γdiag)
-    @test parity_operator ≈ -parity_operator_diag
+    @test parity_operator ≈ protocol_parity * parity_operator_diag
+    @test parity_operator ≈ -protocol_parity * 1im * prod(diagonal_majoranas(η, k, 1 / 3, λ, -protocol_parity))
+
 
     @test all(norm(y^2 - I) < 1e-10 for y in γdiag)
     ## test CAR 
@@ -114,4 +118,29 @@ end
     for (y1, y2) in Base.product(γdiag, γdiag)
         @test norm(y1 * y2 + y2 * y1 - 2I * (y1 == y2)) < 1e-10
     end
+
+    # Check that the hamiltonian is the same
+    param_dict = Dict(
+        :η => 0.2,
+        :T => 5e2,
+        :k => 1e1,
+        :steps => 200,
+        :correction => SimpleCorrection(sin),
+        :interpolate_corrected_hamiltonian => true,
+        :initial => I,
+        :totalparity => -1
+    )
+    prob = setup_problem(param_dict)
+    function diagham(d, t)
+        subinds = d[:totalparity] == 1 ? (5:8) : (1:4)
+        # subinds = (1:4)
+        γ1D, γΔD, γηD, γθDprime, γϕprime, γηprime = diagonal_majoranas(d[:η], d[:k], t, d[:correction].scaling(t), d[:totalparity])
+        (; ε, Δtilde, λ) = MajoranaBraiding.analytic_parameters(d[:correction].scaling(t), d[:η], d[:k], t)
+        1im * (Δtilde*γ1D*γΔD+ε*γηD*γθDprime+λ*γϕprime*γηprime)[subinds, subinds]
+    end
+    @test all(prob[:H](prob[:p], t) / prob[:T] ≈ diagham(prob, t) for t in range(0, 2, 100))
+
+    param_dict[:totalparity] = -param_dict[:totalparity]
+    prob = setup_problem(param_dict)
+    @test all(prob[:H](prob[:p], t) / prob[:T] ≈ diagham(prob, t) for t in range(0, 2, 100))
 end
