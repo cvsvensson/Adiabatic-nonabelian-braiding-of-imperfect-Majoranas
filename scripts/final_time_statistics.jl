@@ -53,14 +53,10 @@ ribbonfunc = (m; dims) -> begin # this function uses std for the ribbon, but cla
     s = dropdims(mapslices(std, m; dims); dims)
     (map((me, s) -> me - s < 0 ? abs(me) : s, me, s), s)
 end
-# ylabelfontsize = 9
 yticks = ([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"])
 ylims = (-0.03, 1.03)
-# tickfontsize = 9
-# xlabelfontsize = 15
-# legendfontsize = 8
 xticks = ([0, 1 / 2, 1], ["0", "0.5", "1"])
-ylabel = L"MBS Similarity $S$"
+
 # Short time plot
 p_shorter_time = plot(; ylims, yticks, xticks=false, legend=false)
 plot!(p_shorter_time, ηs, analytical_fidelity_statistics[:, 1, 1], lw=3, label="Corrected: adiabatic", c=colors[3])

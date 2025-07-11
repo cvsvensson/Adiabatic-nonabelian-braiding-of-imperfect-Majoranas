@@ -8,14 +8,11 @@ end
 smooth_step(k, x) = 1 / 2 + tanh(k * x) / 2
 smooth_step(k) = Base.Fix1(smooth_step, k)
 function get_rhos(k, t)
-    if t > 2
-        @warn "t should be in [0, 2], got $t"
-    end
     f = smooth_step(k)
     ρ1 = f(cos(2pi * t))
     ρ2 = f(cos(2pi * (t - 1 / 3)))
     ρ3 = f(cos(2pi * (t - 2 / 3)))
-    return (ρ1, ρ2, ρ3) ./ sqrt(ρ1^2 + ρ2^2 + ρ3^2) # normalize
+    return (ρ1, ρ2, ρ3) ./ sqrt(ρ1^2 + ρ2^2 + ρ3^2)
 end
 
 function setup_problem(dict)

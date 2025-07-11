@@ -39,7 +39,7 @@ analytical_gate_fidelity(d::Dict) = analytical_gate_fidelity(d[:η], d[:totalpar
 analytical_gate_fidelity(η::Tuple, totalparity) = analytical_gate_fidelity(effective_η(η), totalparity)
 function analytical_gate_fidelity(η, totalparity)
     # (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
-    # return sin(π / 2 * (-totalparity * α + ν))^2
+    # return sin(π / 2 * (α + ν))^2
     return sin(π / 2 * (1 - η^2)^(3 / 2) / (1 - η^6)^(1 / 2))^2
 end
 single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:η], d[:totalparity])
@@ -133,7 +133,6 @@ end
     prob = setup_problem(param_dict)
     function diagham(d, t)
         subinds = d[:totalparity] == 1 ? (5:8) : (1:4)
-        # subinds = (1:4)
         γ1D, γΔD, γηD, γθDprime, γϕprime, γηprime = diagonal_majoranas(d[:η], d[:k], t, d[:correction].scaling(t), d[:totalparity])
         (; ε, Δtilde, λ) = MajoranaBraiding.analytic_parameters(d[:correction].scaling(t), d[:η], d[:k], t)
         1im * (Δtilde*γ1D*γΔD+ε*γηD*γθDprime+λ*γϕprime*γηprime)[subinds, subinds]
