@@ -19,8 +19,8 @@ function analytical_gates(P, η, totalparity)
     ϕ_μ = π / 4 + θ_μ / 2
     ϕ_α = θ_α / 2
     U_12 = exp(1im * ϕ_μ * P[:M̃, :L] + 1im * ϕ_α * P[:M, :L̃])
-    U_23 = exp(1im * π / 4 * (P[:L, :R] + P[:L̃, :R̃])) * exp(-1im * π / 4 * ν * (μ * P[:M̃, :R] + ν * P[:L, :R]) + 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃]))
-    U_31 = exp(-1im * ϕ_μ * P[:M̃, :R] - 1im * ϕ_α * P[:M, :R̃])
+    U_23 = exp(1im * π / 4 * (P[:L, :R] - totalparity * P[:L̃, :R̃])) * exp(-1im * π / 4 * ν * (μ * P[:M̃, :R] + ν * P[:L, :R]) + -totalparity * 1im * π / 4 * α * (β * P[:M, :R̃] - α * P[:L̃, :R̃]))
+    U_31 = exp(-1im * ϕ_μ * P[:M̃, :R] + totalparity * 1im * ϕ_α * P[:M, :R̃])
     return U_31, U_23, U_12
 
 end
@@ -45,7 +45,7 @@ end
 single_braid_gate_analytical(d::Dict) = single_braid_gate_analytical(d[:P], d[:η], d[:totalparity])
 function single_braid_gate_analytical(P, η, totalparity)
     (; α, ν) = analytical_components_middle_of_protocol(η, totalparity)
-    return exp(π / 4 * (-totalparity * α + ν) * 1im * P[:L, :R])
+    return exp(π / 4 * (α + ν) * 1im * P[:L, :R])
 end
 
 

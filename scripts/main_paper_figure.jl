@@ -38,9 +38,20 @@ uncorrected_double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 end
 
 ## Figure for the paper 
-p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", size=0.6 .* (600, 350), xlabelfontsize=15, ylabelfontsize=10, legendfontsize=9, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]), legendposition=:topright, margin=0Plots.mm, tickfontsize=9)
+# ylabel=L"MBS Similarity $S$"
+# ylabel = L"S"
+# tickfontsize = 9
+# legendfontsize = 9
+# ylabelfontsize = 10
+# xlabelfontsize = 15
+xticks = xticks = ([0, 1 / 2, 1], ["0", "0.5", "1"])
+yticks = ([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"])
+# p = plot(; frame=:box, size=0.55 .* (600, 250), xlabelfontsize, ylabelfontsize, legendfontsize, ylims=(-0.03, 1.03), yticks, xticks, legendposition=:topright, margin=0Plots.mm, right_margin=1Plots.mm, tickfontsize=9, xticksize=0)
+p = plot(; frame=:box, size=0.55 .* (600, 250), ylims=(-0.03, 1.03), yticks, xticks, legendposition=:topright, margin=0Plots.mm, right_margin=1Plots.mm, thickness_scaling=1.1)
 plot!(p, ηs, uncorrected_double_braid_majorana_fidelity, label="Uncorrected", lw=2, c=colors[2])
 plot!(p, ηs, analytical_fidelity, lw=3, label="Corrected", c=colors[3])
-annotate!(p, 0.6, -0.1, L"$\eta$")
+# annotate!(p, 0.6, -0.1, L"$\eta$")
+annotate!(p, 1.055, -0.09, L"$\eta$", 12)
+annotate!(p, -0.1, 1, L"S", 12)
 ##
 savefig(p, "majorana_similarity.pdf")

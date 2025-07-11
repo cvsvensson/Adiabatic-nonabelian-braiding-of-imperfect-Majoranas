@@ -16,9 +16,9 @@ end
 find_zero_energy_from_analytics(η::Tuple, k, t, initial, totalparity; kwargs...) = find_zero_energy_from_analytics(effective_η(η), k, t, initial, totalparity; kwargs...)
 function find_zero_energy_from_analytics(η, k, t, initial, totalparity; atol=1e-15, rtol=0.0, kwargs...)
     λ = try
-        find_zero(λ -> analytic_parameters(λ, η, k, t).ε + totalparity * λ, initial; atol, rtol, kwargs...)
+        find_zero(λ -> analytic_parameters(λ, η, k, t).ε - λ, initial; atol, rtol, kwargs...)
     catch
-        find_zero(λ -> analytic_parameters(λ, η, k, t).ε + totalparity * λ, initial; atol, rtol, verbose=true, kwargs...)
+        find_zero(λ -> analytic_parameters(λ, η, k, t).ε - λ, initial; atol, rtol, verbose=true, kwargs...)
     end
     return λ
 end
@@ -58,19 +58,19 @@ end
 analytical_components_middle_of_protocol(d::Dict) = analytical_components_middle_of_protocol(d[:η], d[:totalparity])
 analytical_components_middle_of_protocol(η::Tuple, totalparity) = analytical_components_middle_of_protocol(effective_η(η), totalparity)
 function analytical_components_middle_of_protocol(η, totalparity)
-    λ = -totalparity * η / sqrt(1 + η^2)
+    λ = η / sqrt(1 + η^2)
     d = sqrt(1 + η^2 + η^4)
     α = 1 / d
-    ν = totalparity * η^2 / d
+    ν = -η^2 / d
     μ = sqrt(1 + η^2) / d
-    β = totalparity * η * sqrt(1 + η^2) / d
+    β = -η * sqrt(1 + η^2) / d
     θ_α = atan(β, α)
     θ_μ = atan(ν, μ)
     return (; μ, α, β, ν, θ_α, θ_μ, λ, η)
 end
 
 function analytical_components_middle_of_protocol_old(η, totalparity)
-    λ = -totalparity * η / sqrt(1 + η^2)
+    λ = η / sqrt(1 + η^2)
     θ_μ = -1 / 2 * atan(2 * λ * η / (1 + λ^2 - η^2))
     ν, μ = sincos(θ_μ)
     θ_α = -1 * atan(-η * tan(θ_μ) + λ)

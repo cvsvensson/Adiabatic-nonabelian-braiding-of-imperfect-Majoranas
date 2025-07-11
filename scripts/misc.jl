@@ -5,17 +5,17 @@ using ProgressMeter
 using Base.Threads
 ##
 param_dict = Dict(
-    :η => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers
+    :η => 0.5,#(0.8, 0.4, 1), #Majorana overlaps. Number or triplet of numbers. If asymmetric, choose OptimizedIndependentSimpleCorrection
     :T => 1e3, #Maximum time
     :k => 1e1, #Determines the slope of the ramp
     :steps => 500, #Number of timesteps for interpolations
     :correction => InterpolatedExactSimpleCorrection(), #Different corrections are available. This is the most relevant one for the paper
     # :correction => OptimizedSimpleCorrection(),
-    # :correction => OptimizedIndependentSimpleCorrection(1, 0), 
+    # :correction => OptimizedIndependentSimpleCorrection(100, 1e-3),
     :interpolate_corrected_hamiltonian => true, #Creating an interpolated Hamiltonian might speed things up
     # :γ => γ, #Majorana basis
-    :initial => (:L, :L̃) => 1, #Initial state. Use I for the identity matrix.
     :totalparity => -1, # The protocol works best for -1, as the gap closes for totalparity = 1 and η = 1
+    :initial => (:L, :L̃) => -1, #Initial state. Use I for the identity matrix.
     :gapscaling => t -> 1 .+ 0.5 * cos(2pi * t) # Gap scaling function
 )
 
@@ -24,7 +24,7 @@ param_dict = Dict(
 visualize_protocol(prob)
 ##
 @time sol = solve(prob);
-plot(prob[:ts], stack([prob[:correction].scaling(t) for t in prob[:ts]]))
+plot(prob[:ts], reduce(vcat, prob[:correction].scaling(t)' for t in prob[:ts]))
 ##
 plot(sol.t, [(norm(sol(0.0)) - norm(sol(t))) for t in sol.t], label="norm error", xlabel="t") # get a sense of the numerical error
 ##
@@ -50,7 +50,7 @@ double_braid_fidelity = zeros(Float64, 2gridpoints, gridpoints)
             :steps => 200,
             :correction => InterpolatedExactSimpleCorrection(),
             :interpolate_corrected_hamiltonian => true,
-            :totalparity => -1,
+            :totalparity => 1,
             :initial => I,
         )
         prob = setup_problem(local_dict)
@@ -92,7 +92,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :initial => I,
-        :totalparity => -1
+        :totalparity => 1
     )
     prob = setup_problem(local_dict)
     sol = solve(prob; saveat=[2])
@@ -155,7 +155,7 @@ uncorrected_double_braid_majorana_fidelity_shorter_time = zeros(Float64, gridpoi
         # :correction => OptimizedSimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :initial => I,
-        :totalparity => -1
+        :totalparity => 1
     )
     prob = setup_problem(local_dict)
     sol = solve(prob; saveat=[2])

@@ -10,7 +10,7 @@ colors = ["#FFC000", "#00B0F0", "#92D050"]
 
 ## Run simulation
 gridpoints = 20
-ηs = (range(0, 1.5, gridpoints)) #range(0, 1, length=gridpoints)
+ηs = range(0, 1.4, gridpoints)
 double_braid_majorana_fidelity = zeros(Float64, gridpoints)
 analytical_fidelity = zeros(Float64, gridpoints)
 asymmetry = (1, 0.5, 0.2)
@@ -38,9 +38,12 @@ end
 
 ## Plot results
 effective_ηs = effective_η_scaling * ηs
-p = plot(; frame=:box, ylabel=L"MBS Similarity $S$", xlabel=L"\eta_\mathrm{eff} = \sqrt{\eta_1\sqrt{\eta_2\eta_3}}", size=0.6 .* (600, 400), xlabelfontsize=10, ylabelfontsize=9, ylims=(-0.03, 1.03), legendposition=:bottomleft, tickfontsize=9, yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"])
-)
+yticks = ([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"])
+xlabel = L"\eta_\mathrm{eff} = \sqrt{\eta_1\sqrt{\eta_2\eta_3}}"
+ylims = (-0.03, 1.03)
+p = plot(; frame=:box, xlabel, yticks, size=0.55 .* (600, 350), ylims, legendposition=:bottomleft, thickness_scaling=1.1)
 plot!(p, effective_ηs, analytical_fidelity, lw=3, label=L"Analytic curve with $\eta_\mathrm{eff}$", c=colors[3])
 scatter!(p, effective_ηs, double_braid_majorana_fidelity, label="Asymmetric correction protocol", c=colors[1], marker=true, markerstrokewidth=4)
+annotate!(p, -0.08, 1, L"S", 12)
 ##
 savefig(p, "majorana_similarity_SI_asymmetric.pdf")

@@ -51,24 +51,30 @@ ribbonfunc = (m; dims) -> begin # this function uses std for the ribbon, but cla
     s = dropdims(mapslices(std, m; dims); dims)
     (map((me, s) -> me - s < 0 ? abs(me) : s, me, s), s)
 end
-ylabelfontsize = 9
+# ylabelfontsize = 9
 yticks = ([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"])
 ylims = (-0.03, 1.03)
-tickfontsize = 9
+# tickfontsize = 9
+# xlabelfontsize = 15
+# legendfontsize = 8
+xticks = ([0, 1 / 2, 1], ["0", "0.5", "1"])
+ylabel = L"MBS Similarity $S$"
 # Short time plot
-p_shorter_time = plot(; ylabel=L"MBS Similarity $S$", size=0.7 .* (600, 400), ylabelfontsize, ylims, yticks, xticks=false, legend=false, tickfontsize)
+p_shorter_time = plot(; ylims, yticks, xticks=false, legend=false)
 plot!(p_shorter_time, ηs, analytical_fidelity_statistics[:, 1, 1], lw=3, label="Corrected: adiabatic", c=colors[3])
 plot!(p_shorter_time, ηs, mean(double_braid_majorana_fidelity_statistics[:, :, 1], dims=2), lw=3, label="Corrected: finite time", ls=:dash, c=colors[1], ribbon=ribbonfunc(double_braid_majorana_fidelity_statistics[:, :, 1], dims=2))
 plot!(p_shorter_time, ηs, mean(uncorrected_double_braid_majorana_fidelity_statistics[:, :, 1], dims=2), label="Uncorrected", lw=2, c=colors[2], ribbon=ribbonfunc(uncorrected_double_braid_majorana_fidelity_statistics[:, :, 1], dims=2))
-annotate!(p_shorter_time, -0.12, 1, text(L"\mathrm{(a)}", 12))
+annotate!(p_shorter_time, -0.11, 1, text(L"\mathrm{(a)}", 10))
+annotate!(p_shorter_time, -0.11, 0.8, text(L"S", 10))
 
 # Longer time plot
-p_long_time = plot(; ylabel=L"MBS Similarity $S$", xlabel=L"\eta", size=0.7 .* (600, 400), xlabelfontsize=15, ylims, yticks, xticks=([0, 1 / 2, 1], ["0", "0.5", "1"]), legendposition=:topright, ylabelfontsize, legendfontsize=8, tickfontsize)
+p_long_time = plot(; xlabel=L"\eta", ylims, yticks, xticks, legendposition=:topright)
 plot!(p_long_time, ηs, analytical_fidelity_statistics[:, 1, 1], lw=3, label="Corrected: adiabatic", c=colors[3])
 plot!(p_long_time, ηs, mean(double_braid_majorana_fidelity_statistics[:, :, 2], dims=2), lw=3, label="Corrected: finite time", ls=:dash, c=colors[1], ribbon=ribbonfunc(double_braid_majorana_fidelity_statistics[:, :, 2], dims=2))
 plot!(p_long_time, ηs, mean(uncorrected_double_braid_majorana_fidelity_statistics[:, :, 2], dims=2), label="Uncorrected", lw=2, c=colors[2], ribbon=ribbonfunc(uncorrected_double_braid_majorana_fidelity_statistics[:, :, 2], dims=2))
-annotate!(p_long_time, -0.12, 1, text(L"\mathrm{(b)}", 12))
+annotate!(p_long_time, -0.11, 1, text(L"\mathrm{(b)}", 10))
+annotate!(p_long_time, -0.11, 0.8, text(L"S", 10))
 #
-p_statistics = plot(p_shorter_time, p_long_time, layout=(2, 1), size=0.6 .* (600, 600), margin=0Plots.mm, bottom_margin=[-3Plots.mm -3Plots.mm])
+p_statistics = plot(p_shorter_time, p_long_time, layout=(2, 1), size=0.6 .* (600, 500), thickness_scaling=1.2, margin=0Plots.mm, bottom_margin=[-3Plots.mm -3Plots.mm], left_margin=1Plots.mm, legendfontsize=6)
 ##
 savefig(p_statistics, "majorana_similarity_SI_statistics.pdf")

@@ -18,23 +18,23 @@ get_iH_interpolation_op(H, p, ts, T) = get_op_from_interpolation(get_iH_interpol
 get_op_from_interpolation(int) = MatrixOperator(int(0.0); update_func=(A, u, p, t) -> int(t))
 
 ham_with_corrections(p, t, α=1) = _ham_with_corrections(p..., t, α)
-_ham_with_corrections(η::Number, k, gapscaling, correction, P, t, α=1) = _ham_with_corrections((η, η, η), k, gapscaling, correction, P, t, α)
-function _ham_with_corrections(ηs, k, gapscaling, correction, P, t, α=1)
+_ham_with_corrections(η::Number, k, gapscaling, correction, P, totalparity, t, α) = _ham_with_corrections((η, η, η), k, gapscaling, correction, P, totalparity, t, α)
+function _ham_with_corrections(ηs, k, gapscaling, correction, P, totalparity, t, α)
     ρs = get_rhos(k, t)
     Ham = (ρs[1] * P[:M, :M̃] +
            ρs[2] * P[:M, :L] +
            ρs[3] * P[:M, :R] +
            # errors
            ρs[2] * sqrt(ηs[1] * ηs[2]) * P[:M̃, :L̃] +
-           ρs[3] * sqrt(ηs[1] * ηs[3]) * P[:M̃, :R̃])
-    Ham += correction(t, ρs, ηs, P, Ham)
+           -totalparity * ρs[3] * sqrt(ηs[1] * ηs[3]) * P[:M̃, :R̃])
+    Ham += correction(t, ρs, ηs, P, totalparity, Ham)
     return Ham * α * gapscaling(t)
 end
 
 abstract type AbstractCorrection end
-(corr::AbstractCorrection)(t, ρs, ηs, P, ham) = error("(corr::C)(t, ρs, ηs, P, ham) not implemented for C=$(typeof(corr))")
+(corr::AbstractCorrection)(t, ρs, ηs, P, totalparity, ham) = error("(corr::C)(t, ρs, ηs, P,totalparity, ham) not implemented for C=$(typeof(corr))")
 struct NoCorrection <: AbstractCorrection end
-(corr::NoCorrection)(t, ρs, ηs, P, ham) = 0I
+(corr::NoCorrection)(t, ρs, ηs, P, totalparity, ham) = 0I
 struct SimpleCorrection{T} <: AbstractCorrection
     scaling::T
 end
@@ -42,7 +42,7 @@ setup_correction(::NoCorrection, ::Dict) = NoCorrection()
 
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
-(corr::SimpleCorrection)(t, ρs, ηs, P, ham) = corr.scaling(t) * (P[:L, :L̃] + P[:R, :R̃])
+(corr::SimpleCorrection)(t, ρs, ηs, P, totalparity, ham) = corr.scaling(t) * (P[:L, :L̃] - totalparity * P[:R, :R̃])
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
 struct IndependentSimpleCorrection{T} <: AbstractCorrection
@@ -57,21 +57,21 @@ end
 IndependentSimpleCorrection(scalings::Vector{<:Number}) = length(scalings) == 2 ? IndependentSimpleCorrection(scalings...) : error("scalings must be a vector of length 2")
 setup_correction(corr::IndependentSimpleCorrection, ::Dict) = corr
 
-function (corr::IndependentSimpleCorrection)(t, Δs, ηs, P, ham)
+function (corr::IndependentSimpleCorrection)(t, Δs, ηs, P, totalparity, ham)
     s = corr.scaling(t)
-    s[1] * P[:L, :L̃] + s[2] * P[:R, :R̃]
+    s[1] * P[:L, :L̃] - totalparity * s[2] * P[:R, :R̃]
 end
 
 struct OptimizedSimpleCorrection <: AbstractCorrection end
 
 function setup_correction(::OptimizedSimpleCorrection, d::Dict)
-    return optimized_simple_correction(d[:η], d[:k], d[:P], d[:ts])
+    return optimized_simple_correction(d[:η], d[:k], d[:P], d[:totalparity], d[:ts])
 end
-function optimized_simple_correction(ηs, k, P, ts; alg=BFGS())
+function optimized_simple_correction(ηs, k, P, totalparity, ts; alg=BFGS())
     H = ham_with_corrections
     results = Float64[]
     function cost_function(x, t)
-        vals = eigvals(H((ηs, k, t -> 1, SimpleCorrection(x), P), t))
+        vals = eigvals(H((ηs, k, t -> 1, SimpleCorrection(x), P, totalparity), t))
         return vals[2] - vals[1]
     end
     for t in ts
@@ -89,14 +89,14 @@ struct OptimizedIndependentSimpleCorrection <: AbstractCorrection
 end
 
 function setup_correction(corr::OptimizedIndependentSimpleCorrection, d::Dict)
-    return optimized_independent_simple_correction(d[:η], d[:k], d[:P], d[:ts]; penalty_factor=corr.penalty_factor, maxtime=corr.maxtime)
+    return optimized_independent_simple_correction(d[:η], d[:k], d[:P], d[:totalparity], d[:ts]; penalty_factor=corr.penalty_factor, maxtime=corr.maxtime)
 end
 
-function optimized_independent_simple_correction(ηs, k, P, ts; penalty_factor, maxtime, alg=Fminbox(NelderMead()))
+function optimized_independent_simple_correction(ηs, k, P, totalparity, ts; penalty_factor, maxtime, alg=Fminbox(NelderMead()))
     H = ham_with_corrections
     results = Vector{Float64}[]
     function cost_function(x::Vector, t)
-        ham = Hermitian(H((ηs, k, t -> 1, IndependentSimpleCorrection(x), P), t))
+        ham = Hermitian(H((ηs, k, t -> 1, IndependentSimpleCorrection(x), P, totalparity), t))
         vals = eigvals(ham)
         return vals[2] - vals[1]
     end
