@@ -5,11 +5,13 @@ using ProgressMeter
 using Base.Threads
 using LaTeXStrings
 using Statistics
+import Random: seed!
+seed!(1)
 ## Plot settings
 default(fontfamily="Computer Modern", linewidth=2, framestyle=:box, label=nothing, grid=false)
 colors = ["#FFC000", "#00B0F0", "#92D050"]
 
-## Statistics over different final times. Takes about 15 minutes to run with 1000*500 gridpoints and realizations.
+## Statistics over different final times
 gridpoints = 400
 realizations = 400
 ηs = range(0, 1, gridpoints)
