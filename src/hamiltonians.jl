@@ -42,7 +42,7 @@ setup_correction(::NoCorrection, ::Dict) = NoCorrection()
 
 SimpleCorrection() = SimpleCorrection(true)
 SimpleCorrection(scaling::Number) = SimpleCorrection(t -> scaling)
-(corr::SimpleCorrection)(t, ρs, ηs, P, totalparity, ham) = corr.scaling(t) * (P[:L, :L̃] - totalparity * P[:R, :R̃])
+(corr::SimpleCorrection)(t, ρs, ηs, P, totalparity, ham) = sign(ρs[1]) * corr.scaling(t) * (P[:L, :L̃] - totalparity * P[:R, :R̃])
 setup_correction(corr::SimpleCorrection, ::Dict) = corr
 
 struct IndependentSimpleCorrection{T} <: AbstractCorrection

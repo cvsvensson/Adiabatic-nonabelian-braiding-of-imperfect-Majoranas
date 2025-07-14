@@ -56,9 +56,7 @@ double_braid_fidelity = zeros(Float64, 2gridpoints, gridpoints)
         prob = setup_problem(local_dict)
         sol = solve(prob; saveat=[1, 2])
         proj = prob[:totalparity] == 1 ? Diagonal([0, 1, 1, 0]) : Diagonal([1, 0, 0, 1])
-        # proj = Diagonal([1, 0, 0, 1])
         single_braid_gate = majorana_exchange(-prob[:P][:L, :R])
-        # single_braid_gate = analytical_protocol_gate(prob)
         double_braid_gate = single_braid_gate^2
         single_braid_result = sol(1)
         double_braid_result = sol(2)
@@ -92,7 +90,7 @@ fidelity_numerics_analytic = zeros(Float64, gridpoints)
         # :correction => SimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :initial => I,
-        :totalparity => 1
+        :totalparity => -1
     )
     prob = setup_problem(local_dict)
     sol = solve(prob; saveat=[2])
@@ -119,28 +117,8 @@ plot!(ηs, analytical_fidelity, label="analytical majorana similarity", lw=2)
 plot!(ηs, double_braid_analytical_gate_fidelity, label="double_braid_analytical_gate_fidelity", lw=2)
 
 
-## Check that the analytical gapped majoranas project on the ground state
-param_dict = Dict(
-    :η => 0.2, #Majorana overlaps. Number or triplet of numbers
-    :T => 5e3, #Maximum time
-    :k => 2e1, #Determines the slope of the ramp
-    :steps => 2000, #Number of timesteps for interpolations
-    :correction => InterpolatedExactSimpleCorrection(),
-    :interpolate_corrected_hamiltonian => true,
-    :initial => I,
-    :totalparity => -1
-)
-prob = setup_problem(param_dict)
-subinds = prob[:totalparity] == 1 ? (5:8) : (1:4)
-hams = [prob[:H](prob[:p], t) for t in prob[:ts]]
-projs = [eigen(Matrix(ham)).vectors[:, 1:2] for ham in hams]
-projs = [p * p' for p in projs]
-P = [I - 1im * prod(diagonal_majoranas(prob, t)[1:2])[subinds, subinds] for t in prob[:ts]] / 2
-[norm(p0 - p1) for (p0, p1) in zip(projs, P)] |> norm < 1e-12
-
-
 ## Old SI figure
-gridpoints = 1000
+gridpoints = 100
 ηs = (range(0, 1, gridpoints))
 double_braid_majorana_fidelity_shorter_time = zeros(Float64, gridpoints)
 analytical_fidelity_shorter_time = zeros(Float64, gridpoints)
@@ -150,12 +128,12 @@ uncorrected_double_braid_majorana_fidelity_shorter_time = zeros(Float64, gridpoi
         :η => η,
         :T => 60,
         :k => 10,
-        :steps => 1000,
+        :steps => 400,
         :correction => InterpolatedExactSimpleCorrection(),
         # :correction => OptimizedSimpleCorrection(),
         :interpolate_corrected_hamiltonian => true,
         :initial => I,
-        :totalparity => 1
+        :totalparity => -1
     )
     prob = setup_problem(local_dict)
     sol = solve(prob; saveat=[2])
@@ -170,10 +148,9 @@ uncorrected_double_braid_majorana_fidelity_shorter_time = zeros(Float64, gridpoi
 end
 
 ## Check that the corrected protocol agrees with the analytical fidelity
-ylabelfontsize = 9
-p_shorter_time = plot(; frame=:box, ylabel=L"MBS Similarity $S$", size=0.7 .* (600, 400), xlabelfontsize=15, ylabelfontsize, legendfontsize=8, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xticks=false, legendposition=:topright)
-plot!(p_shorter_time, ηs, analytical_fidelity_shorter_time, lw=3, label="Corrected: adiabatic", c=colors[3])
-plot!(p_shorter_time, ηs, double_braid_majorana_fidelity_shorter_time, lw=3, label="Corrected: finite time", ls=:dash, c=colors[1])
-plot!(p_shorter_time, ηs, uncorrected_double_braid_majorana_fidelity_shorter_time, label="Uncorrected", lw=2, c=colors[2])
+using LaTeXStrings
+p_shorter_time = plot(; frame=:box, ylabel=L"MBS Similarity $S$", size=0.7 .* (600, 400), xlabelfontsize=15, ylabelfontsize=9, legendfontsize=8, ylims=(-0.03, 1.03), yticks=([0, 1 / 2, 1], ["0", L"\frac{1}{2}", "1"]), xlabel = L"\eta",legendposition=:topright)
+plot!(p_shorter_time, ηs, analytical_fidelity_shorter_time, lw=3, label="Corrected: adiabatic", c=3)
+plot!(p_shorter_time, ηs, double_braid_majorana_fidelity_shorter_time, lw=3, label="Corrected: finite time", ls=:dash, c=1)
+plot!(p_shorter_time, ηs, uncorrected_double_braid_majorana_fidelity_shorter_time, label="Uncorrected", lw=2, c=2)
 annotate!(p_shorter_time, -0.12, 1, text(L"\mathrm{a)}", 12))
-

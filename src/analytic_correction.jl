@@ -36,10 +36,10 @@ end
 
 analytic_parameters(λ, η::Tuple, k, t) = analytic_parameters(λ, effective_η(η), k, t)
 function analytic_parameters(λ, η, k, t)
-    ρs = get_rhos(k, t)
+    ρs = get_rhos(k, t) 
     ρ23 = sqrt(ρs[2]^2 + ρs[3]^2)
-    θ = atan(ρ23, ρs[1])
-    ϕ = atan(ρs[3], ρs[2])
+    θ = atan(ρ23 / ρs[1])
+    ϕ = atan(ρs[3] / ρs[2])
     λtilde = λ * sin(θ) + η * cos(θ) * sin(θ)
     ηtilde = η * sin(θ)^2 - λ * cos(θ)
     θ_μ = -1 / 2 * atan(2 * λtilde * ηtilde, 1 + λtilde^2 - ηtilde^2)
