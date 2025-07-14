@@ -37,11 +37,11 @@ visualize_parities(sol, prob)
 
 ## Heatmap of fidelity as a function of T and η
 gridpoints = 40
-T_arr = logrange(1e0, 5e3, length=gridpoints)
+T = logrange(1e0, 5e3, length=gridpoints)
 etas = range(1e-3, 1 - 1e-3, length=2 * gridpoints)
 single_braid_fidelity = zeros(Float64, 2gridpoints, gridpoints)
 double_braid_fidelity = zeros(Float64, 2gridpoints, gridpoints)
-@time @showprogress for (idx_T, T) in enumerate(T_arr)
+@time @showprogress for (idx_T, T) in enumerate(T)
     @threads :static for (idx_z, η) in collect(enumerate(etas))
         local_dict = Dict(
             :η => η,
@@ -64,8 +64,8 @@ double_braid_fidelity = zeros(Float64, 2gridpoints, gridpoints)
         double_braid_fidelity[idx_z, idx_T] = gate_fidelity(proj * double_braid_gate * proj, proj * double_braid_result * proj)
     end
 end
-plot(heatmap(T_arr, etas, single_braid_fidelity .^ 2, xlabel="T", ylabel="η", c=:viridis, title="Single braid fidelity", clim=(0, 1), xscale=:log),
-    heatmap(T_arr, etas, double_braid_fidelity .^ 2, xlabel="T", ylabel="η", c=:viridis, title="Double braid fidelity", clim=(0, 1)), xscale=:log)
+plot(heatmap(T_arr, etas, single_braid_fidelity .^ 2, xlabel="T", ylabel="η", c=:viridis, title="Single braid fidelity", clim=(0, 1), xscale=:log10),
+    heatmap(T_arr, etas, double_braid_fidelity .^ 2, xlabel="T", ylabel="η", c=:viridis, title="Double braid fidelity", clim=(0, 1)), xscale=:log10)
 
 
 ## 1d sweep over eta for the fidelity
